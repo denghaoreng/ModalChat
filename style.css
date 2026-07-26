@@ -1,0 +1,56 @@
+/* ModalChat — 多模态聊天插件样式 */
+
+/* 导航标签 */
+.mc-tab {
+    transition: color 0.2s;
+}
+.mc-tab:hover {
+    color: var(--primary) !important;
+}
+
+/* 文件管理器 */
+.mc-dir-item {
+    transition: background 0.15s;
+}
+.mc-dir-item:hover {
+    background: var(--white30);
+}
+
+.mc-file-row:hover {
+    background: var(--white10);
+}
+
+.mc-file-name:hover {
+    color: var(--primary);
+}
+
+/* 聊天图片子标签 */
+.mc-ci-tab {
+    transition: color 0.2s, border-color 0.2s;
+}
+.mc-ci-tab:hover {
+    color: var(--primary) !important;
+}
+
+/* 匹配打分子标签 */
+.mc-ms-tab {
+    transition: color 0.2s, border-color 0.2s;
+}
+.mc-ms-tab:hover {
+    color: var(--primary) !important;
+}
+
+/* 通用 */
+.mc-ci-item, .mc-ci-rule {
+    transition: border-color 0.15s;
+}
+.mc-ci-item:hover, .mc-ci-rule:hover {
+    border-color: var(--primary) !important;
+}
+
+.mc-ms-file-card {
+    transition: border-color 0.15s;
+}
+.mc-ms-file-card:hover {
+    border-color: var(--primary) !important;
+}
