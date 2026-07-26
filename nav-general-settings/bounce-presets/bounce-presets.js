@@ -343,7 +343,7 @@ export function bindBounceEvents() {
     $(document).off('click', '#mc-bounce-ref-img').on('click', '#mc-bounce-ref-img', async function () {
         if (!_bounceEditor) return;
         try {
-            const { showFilePickerPopup } = await import('../nav-file-manager/index.js');
+            const { showFilePickerPopup } = await import('../../nav-file-manager/index.js');
             const entries = await showFilePickerPopup({ multiSelect: false, title: '选择参考图片' });
             if (entries && entries.length > 0) {
                 const fp = entries[0].fullServerPath || entries[0].serverFilename || entries[0].filePath;

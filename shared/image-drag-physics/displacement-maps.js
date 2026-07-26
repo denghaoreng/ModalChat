@@ -1,5 +1,8 @@
 // ── 位移贴图生成 ──
 
+/** 位移贴图尺寸（128×128） */
+export const _MAP_SIZE = 128;
+
 /**
  * 计算椭圆距离，支持椭圆度和旋转角。
  * @param {number} dx - X 偏移
@@ -58,7 +61,7 @@ let _mapData = null;
  * @returns {string} data:image/png;base64,...
  */
 export function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spatialFalloff, displaceMode, ellipticity, ellipseAngle) {
-    const size = 128;
+    const size = _MAP_SIZE;
     if (!_mapCanvas) {
         _mapCanvas = document.createElement('canvas');
         _mapCanvas.width = size;
@@ -77,15 +80,24 @@ export function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spa
     const el = ellipticity || 0;
     const ea = ellipseAngle || 0;
     const sigma = size * 0.08;
+    // falloff 查找表（sf/sd 在本帧内不变）
+    const _LUT_SIZE = 1024;
+    const _lut = hasRadius ? new Float32Array(_LUT_SIZE) : null;
+    if (_lut) {
+        for (let i = 0; i < _LUT_SIZE; i++) {
+            _lut[i] = _falloffFunc(i / (_LUT_SIZE - 1), sf, sd);
+        }
+    }
     for (let y = 0; y < size; y++) {
         for (let x = 0; x < size; x++) {
             const ddx = x - px, ddy = y - py;
             const euclid = Math.sqrt(ddx * ddx + ddy * ddy);
-            const dist = _ellipDist(ddx, ddy, el, ea);
+            const dist = el > 0.001 ? _ellipDist(ddx, ddy, el, ea) : euclid;
             let f;
             let dirX = ux, dirY = uy;
             if (hasRadius) {
-                f = _falloffFunc(dist / maxDist, sf, sd);
+                const t = dist / maxDist;
+                f = _lut ? _lut[Math.min(Math.round(t * (_LUT_SIZE - 1)), _LUT_SIZE - 1)] : 0;
                 if (displaceMode === 'vortex') {
                     const safeD = Math.max(euclid, 0.001);
                     dirX = ddy / safeD;
@@ -99,14 +111,12 @@ export function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spa
                     const safeD = Math.max(euclid, 0.001);
                     dirX = -ddx / safeD;   // 指向中心
                     dirY = -ddy / safeD;
-                    const t = dist / maxDist;
                     f = t * f;
                 } else if (displaceMode === 'expand') {
                     // 放大：中心内容向外铺开，方向指向外
                     const safeD = Math.max(euclid, 0.001);
                     dirX = ddx / safeD;    // 指向外
                     dirY = ddy / safeD;
-                    const t = dist / maxDist;
                     f = t * f;
                 }
             } else {
@@ -116,8 +126,8 @@ export function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spa
             const rx = -dirX * off;
             const ry = -dirY * off;
             const idx = (y * size + x) * 4;
-            data[idx]     = Math.max(0, Math.min(255, 128 + rx));
-            data[idx + 1] = Math.max(0, Math.min(255, 128 + ry));
+            data[idx]     = 128 + rx;
+            data[idx + 1] = 128 + ry;
             data[idx + 2] = 128;
             data[idx + 3] = 255;
         }
@@ -157,7 +167,7 @@ export function _genMapBone(jx, jy, ex, ey, dirX, dirY, scale, jr, er, spread, s
     const sf = spatialFalloff || 'smooth';
     const el = ellipticity || 0;
     const ea = ellipseAngle || 0;
-    const size = 128;
+    const size = _MAP_SIZE;
     if (!_boneCanvas) {
         _boneCanvas = document.createElement('canvas');
         _boneCanvas.width = size;
@@ -221,8 +231,8 @@ export function _genMapBone(jx, jy, ex, ey, dirX, dirY, scale, jr, er, spread, s
             const rx = -bDirX * off;
             const ry = -bDirY * off;
             const idx = (y * size + x) * 4;
-            data[idx]     = Math.max(0, Math.min(255, 128 + rx));
-            data[idx + 1] = Math.max(0, Math.min(255, 128 + ry));
+            data[idx]     = 128 + rx;
+            data[idx + 1] = 128 + ry;
             data[idx + 2] = 128;
             data[idx + 3] = 255;
         }

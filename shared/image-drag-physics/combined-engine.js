@@ -1,14 +1,16 @@
 // ── 合批弹跳引擎（单 SVG 滤波器 + 单 rAF 循环，预计算 falloff，复用 canvas） ──
 
 import { _NS, _addFilterUrl, _removeFilterUrl } from './svg-utils.js';
-import { _ellipDist, _falloffFunc } from './displacement-maps.js';
+import { _ellipDist, _falloffFunc, _MAP_SIZE } from './displacement-maps.js';
 
 /**
- * 预计算每个点的静态 falloff 场（距离权重，不依赖动画状态），
- * 这样每帧只需乘积即可得到位移量，省去大量重复的 sqrt 和三角计算。
+ * 预计算每个点的静态 falloff 场 + 方向场。
+ * falloff 不依赖动画状态，每帧只需乘积。
+ * 方向场预计算 128×128 的单位向量 (nx,ny)，省去每帧 sqrt。
  */
 function _precomputeFalloffs(points) {
-    const size = 128;
+    const size = _MAP_SIZE;
+    const LUT_SIZE = 1024;
     return points.map(p => {
         const px = p.ox * size, py = p.oy * size;
         const radius = p.radius || 0.08;
@@ -18,6 +20,13 @@ function _precomputeFalloffs(points) {
         const el = p.ellipticity || 0;
         const ea = p.ellipseAngle || 0;
         const falloff = new Float32Array(size * size);
+        const dirField = new Float32Array(size * size * 2); // nx, ny per pixel
+
+        // falloff 查找表（帧内 sf/sd 不变）
+        const _lut = new Float32Array(LUT_SIZE);
+        for (let i = 0; i < LUT_SIZE; i++) {
+            _lut[i] = _falloffFunc(i / (LUT_SIZE - 1), sf, sd);
+        }
 
         if (p.type === 'bone') {
             const ex = (p.endX != null ? p.endX : p.ox) * size;
@@ -28,13 +37,17 @@ function _precomputeFalloffs(points) {
             const boneLen = Math.sqrt(bx * bx + by * by) || 1;
             const bnx = bx / boneLen, bny = by / boneLen;
             const spreadMul = 1 + spread * 2;
-            // 外公切线修正
             const gamma = boneLen > 0.001 ? Math.asin(Math.max(-1, Math.min(1, (jr_px - er_px) / boneLen))) : 0;
             const cosG = Math.cos(gamma);
 
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
                     const dx = x - px, dy = y - py;
+                    const d = Math.sqrt(dx * dx + dy * dy) || 1;
+                    const fi = y * size + x;
+                    dirField[fi * 2]     = dx / d; // nx
+                    dirField[fi * 2 + 1] = dy / d; // ny
+
                     const t = (dx * bnx + dy * bny) / boneLen;
                     let along;
                     if (t <= 0) {
@@ -50,28 +63,35 @@ function _precomputeFalloffs(points) {
                     const capEdge = capR * spreadMul;
                     let dist;
                     if (t < 0) {
-                        dist = Math.sqrt(dx * dx + dy * dy);
+                        dist = d;
                     } else if (t > 1) {
                         dist = Math.sqrt((x - ex) * (x - ex) + (y - ey) * (y - ey));
                     } else {
                         dist = Math.abs(-dx * bny + dy * bnx);
                     }
-                    const crossWeight = dist < capEdge ? _falloffFunc(dist / capEdge, sf, sd) : 0;
-                    falloff[y * size + x] = along * crossWeight;
+                    const fi2 = Math.min(Math.round(dist / capEdge * (LUT_SIZE - 1)), LUT_SIZE - 1);
+                    const crossWeight = dist < capEdge ? _lut[fi2] : 0;
+                    falloff[fi] = along * crossWeight;
                 }
             }
         } else {
             const rPx = radius * size;
             const maxDist = rPx * (1 + spread * 2);
+            const useEllip = el > 0.001;
             for (let y = 0; y < size; y++) {
                 for (let x = 0; x < size; x++) {
                     const ddx = x - px, ddy = y - py;
-                    const dist = _ellipDist(ddx, ddy, el, ea);
-                    falloff[y * size + x] = _falloffFunc(dist / maxDist, sf, sd);
+                    const euclid = Math.sqrt(ddx * ddx + ddy * ddy);
+                    const fi = y * size + x;
+                    dirField[fi * 2]     = ddx / (euclid || 1); // nx
+                    dirField[fi * 2 + 1] = ddy / (euclid || 1); // ny
+                    const dist = useEllip ? _ellipDist(ddx, ddy, el, ea) : euclid;
+                    const fi2 = Math.min(Math.round(dist / maxDist * (LUT_SIZE - 1)), LUT_SIZE - 1);
+                    falloff[fi] = _lut[fi2];
                 }
             }
         }
-        return falloff;
+        return { falloff, dirField };
     });
 }
 
@@ -79,13 +99,13 @@ function _precomputeFalloffs(points) {
  * 用预计算 falloff 快速生成合并位移贴图。
  * 复用 canvas / ImageData，避免每帧分配。
  */
-const _COMBINED_SIZE = 128;
+const _COMBINED_SIZE = _MAP_SIZE;
 let _combinedCanvas = null;
 let _combinedCtx = null;
 let _combinedImageData = null;
 let _combinedData = null;
 
-function _genCombinedMapFast(points, stateArr, falloffs) {
+function _genCombinedMapFast(points, stateArr, falloffs, dynFilterScale) {
     // 延迟初始化 canvas / ImageData（复用）
     if (!_combinedCanvas) {
         _combinedCanvas = document.createElement('canvas');
@@ -111,13 +131,14 @@ function _genCombinedMapFast(points, stateArr, falloffs) {
         const st = stateArr[pi];
         if (!st || st.decay < 0.0005) continue;
 
-        const falloff = falloffs[pi];
+        const falloff = falloffs[pi].falloff;
+        const dirField = falloffs[pi].dirField;
         const scale = p.scale || 4;
         const dirX = p.dx, dirY = p.dy;
         const dm = p.displaceMode || 'parallel';
         const pxP = p.ox * size, pyP = p.oy * size;
 
-        const magnitude = Math.abs(scale * st.wobble);
+        let magnitude = Math.abs(scale * st.wobble);
         const perpX = -dirY, perpY = dirX;
         const mixX = dirX * st.wobble + perpX * st.wobblePerp;
         const mixY = dirY * st.wobble + perpY * st.wobblePerp;
@@ -126,26 +147,43 @@ function _genCombinedMapFast(points, stateArr, falloffs) {
         const animDirY = mixY / mixNorm;
 
         const thr = 0.005;
+        const precompDir = dm !== 'parallel' && dirField;
         for (let i = 0; i < size * size; i++) {
             const f = falloff[i];
             if (f < thr) continue;
-            // 非平行模式：每像素独立方向
+            // 非平行模式：用预计算方向场，避免每像素 sqrt
             let pDirX = animDirX, pDirY = animDirY;
-            if (dm !== 'parallel') {
-                const ix = i % size, iy = (i / size) | 0;
-                const ddx = ix - pxP, ddy = iy - pyP;
-                const d = Math.sqrt(ddx * ddx + ddy * ddy) || 1;
-                if (dm === 'vortex') { pDirX = ddy / d; pDirY = -ddx / d; }
-                else if (dm === 'vortexCCW') { pDirX = -ddy / d; pDirY = ddx / d; }
-                else if (dm === 'radial') { pDirX = -ddx / d; pDirY = -ddy / d; } // 收缩（向内）
-                else { pDirX = ddx / d; pDirY = ddy / d; } // 放大（向外）
+            if (precompDir) {
+                const nx = dirField[i * 2];
+                const ny = dirField[i * 2 + 1];
+                if (dm === 'vortex') { pDirX = ny; pDirY = -nx; }
+                else if (dm === 'vortexCCW') { pDirX = -ny; pDirY = nx; }
+                else if (dm === 'radial') { pDirX = -nx; pDirY = -ny; }
+                else { /* expand */
+                    pDirX = nx; pDirY = ny;
+                    // 放大：限制位移不越过中心
+                    if (dynFilterScale > 0) {
+                        const ix = i % size, iy = (i / size) | 0;
+                        const dist = Math.sqrt((ix - pxP) * (ix - pxP) + (iy - pyP) * (iy - pyP)) || 1;
+                        const imgW = p.imgWidth || 600;
+                        const maxOff = dist * 255 * imgW / (_MAP_SIZE * Math.max(dynFilterScale, 1));
+                        const clampedMag = Math.min(magnitude, maxOff / (f * 40 + 0.001));
+                        const off = clampedMag * f * 40;
+                        const rx = -pDirX * off;
+                        const ry = -pDirY * off;
+                        const idx = i * 4;
+                        data[idx]     = data[idx] + rx;
+                        data[idx + 1] = data[idx + 1] + ry;
+                        continue;
+                    }
+                }
             }
             const off = magnitude * f * 40;
             const idx = i * 4;
             const rx = -pDirX * off;
             const ry = -pDirY * off;
-            data[idx]     = Math.max(0, Math.min(255, data[idx] + rx));
-            data[idx + 1] = Math.max(0, Math.min(255, data[idx + 1] + ry));
+            data[idx]     = data[idx] + rx;
+            data[idx + 1] = data[idx + 1] + ry;
         }
     }
 
@@ -184,7 +222,7 @@ function _startBounceCombined(el, points) {
 
     function _setCombinedMap(stateArr) {
         if (!feImg) return;
-        feImg.setAttribute('href', _genCombinedMapFast(points, stateArr, falloffs) + '#t=' + Date.now());
+        feImg.setAttribute('href', _genCombinedMapFast(points, stateArr, falloffs, dynFilterScale) + '#t=' + Date.now());
     }
 
     function _cleanup() {
@@ -212,7 +250,7 @@ function _startBounceCombined(el, points) {
     filter.setAttribute('color-interpolation-filters', 'sRGB');
     feImg = document.createElementNS(_NS, 'feImage');
     feImg.setAttribute('result', 'map');
-    feImg.setAttribute('href', _genCombinedMapFast(points, points.map(() => ({ decay: 1, wobble: 0, wobblePerp: 0 })), falloffs));
+    feImg.setAttribute('href', _genCombinedMapFast(points, points.map(() => ({ decay: 1, wobble: 0, wobblePerp: 0 })), falloffs, dynFilterScale));
     const feDisp = document.createElementNS(_NS, 'feDisplacementMap');
     feDisp.setAttribute('in', 'SourceGraphic');
     feDisp.setAttribute('in2', 'map');
