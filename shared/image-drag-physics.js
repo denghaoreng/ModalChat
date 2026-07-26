@@ -153,19 +153,12 @@ function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spatialFal
                     const t = dist / maxDist;
                     f = t * f;
                 } else if (displaceMode === 'expand') {
-                    // 放大：直接编码"向外采样"，位移量 = -ddx × 比例
-                    // 输出像素从靠近中心取色，永不越过中心
+                    // 放大：中心内容向外铺开，方向指向外
+                    const safeD = Math.max(euclid, 0.001);
+                    dirX = ddx / safeD;    // 指向外
+                    dirY = ddy / safeD;
                     const t = dist / maxDist;
-                    const ratio = scale / (scale + 50); // 0~0.8
-                    const scaleFactor = ratio * t * f;
-                    const idx = (y * size + x) * 4;
-                    const erx = -ddx * scaleFactor;
-                    const ery = -ddy * scaleFactor;
-                    data[idx]     = Math.max(0, Math.min(255, 128 + erx));
-                    data[idx + 1] = Math.max(0, Math.min(255, 128 + ery));
-                    data[idx + 2] = 128;
-                    data[idx + 3] = 255;
-                    continue; // 跳过下面的通用 off 写入
+                    f = t * f;  // 中心位移=0，邻近像素从靠近中心采样→中心黑点被放大
                 }
             } else {
                 f = Math.exp(-(dist * dist) / (2 * sigma * sigma));
