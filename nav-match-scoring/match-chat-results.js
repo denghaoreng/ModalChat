@@ -5,7 +5,7 @@ import { getGeneralSettings, getMSFiles, getAnimationTypes, getMatchScoringData,
 import { escapeHtml, hexToRgb, AUDIO_EXTS, VIDEO_EXTS, IMAGE_EXTS, detectFileType, getFileTypeIcon } from '../shared/utils.js';
 import { getLastResults } from './scorer.js';
 import { showFileEnlarge } from '../shared/file-enlarge.js';
-import { setupDragDeformation, autoBounce } from '../shared/image-drag-physics.js';
+import { setupDragDeformation, autoBounce } from '../shared/image-drag-physics/index.js';
 
 /**
  * 渲染匹配结果面板（抽屉内）

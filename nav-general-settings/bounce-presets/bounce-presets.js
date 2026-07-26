@@ -290,7 +290,7 @@ export function bindBounceEvents() {
             toastr?.warning?.('请至少添加一个弹跳点') || alert('请至少添加一个弹跳点');
             return;
         }
-        const { autoBounce } = await import('../../shared/image-drag-physics.js');
+        const { autoBounce } = await import('../../shared/image-drag-physics/index.js');
         const bgImg = _bounceEditor._bgImage;
         const src = bgImg?.src;
         if (!src) return;
