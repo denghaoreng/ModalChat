@@ -21,15 +21,7 @@ export async function renderFileManager(target) {
 
     // 切换视图时清除选中状态
     selectedFiles.clear();
-    // 保存搜索框的值（加载动画会替换面板内容）
     const _savedSearch = $panel.find('#mc-file-search').val() || '';
-    // 先显示加载态
-    $panel.html(`
-    <div style="padding:40px;text-align:center;color:var(--grey40);font-size:0.9em;">
-        <i class="fa-solid fa-spinner fa-spin" style="font-size:2em;display:block;margin-bottom:12px;"></i>
-        正在加载文件列表...
-    </div>
-    `);
 
     // 异步加载文件
     const { getFilesInDirectory } = await import('../shared/file-service.js');

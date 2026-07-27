@@ -93,7 +93,7 @@ export async function switchTab(tab) {
         case 'match-scoring': {
             await new Promise(r => requestAnimationFrame(r));
             const { renderMatchScoring, bindMatchScoringEvents } = await import('../nav-match-scoring/index.js');
-            renderMatchScoring();
+            await renderMatchScoring();
             bindMatchScoringEvents();
             break;
         }
