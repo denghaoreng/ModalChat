@@ -173,7 +173,11 @@ export async function renderFileDisplay() {
     $panel.html(html);
 }
 
+let _eventsBound = false;
+
 export function bindFileDisplayEvents() {
+    if (_eventsBound) return;
+    _eventsBound = true;
     // 缩略图点击全屏查看（图片/视频用 src，音频图标用 data-src）
     $(document).off('click', '.mc-ms-file-thumb').on('click', '.mc-ms-file-thumb', function () {
         const src = $(this).attr('src') || $(this).data('src');

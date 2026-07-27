@@ -81,38 +81,38 @@ export async function switchTab(tab) {
         .css('border-bottom', '2px solid var(--primary)')
         .css('color', '');
 
-    // 隐藏所有面板
-    $('#mc-chat-images-panel, #mc-match-scoring-panel, #mc-file-manager-panel, #mc-general-panel').hide();
-
-    // 延迟加载并渲染
+    // 先加载渲染目标面板内容（面板保持隐藏），避免空面板闪烁
     switch (tab) {
         case 'chat-images': {
-            $('#mc-chat-images-panel').show();
+            await new Promise(r => requestAnimationFrame(r));
             const { renderChatImages, bindChatImagesEvents } = await import('../nav-chat-images/index.js');
             renderChatImages();
             bindChatImagesEvents();
             break;
         }
         case 'match-scoring': {
-            $('#mc-match-scoring-panel').show();
+            await new Promise(r => requestAnimationFrame(r));
             const { renderMatchScoring, bindMatchScoringEvents } = await import('../nav-match-scoring/index.js');
             renderMatchScoring();
             bindMatchScoringEvents();
             break;
         }
         case 'file-manager': {
-            $('#mc-file-manager-panel').show();
+            await new Promise(r => requestAnimationFrame(r));
             const { renderFileManager, bindManagerEvents } = await import('../nav-file-manager/index.js');
             await renderFileManager();
             bindManagerEvents();
             break;
         }
         case 'general': {
-            $('#mc-general-panel').show();
+            await new Promise(r => requestAnimationFrame(r));
             const { renderGeneralSettings, bindGeneralEvents } = await import('../nav-general-settings/index.js');
             renderGeneralSettings();
             bindGeneralEvents();
             break;
         }
     }
+    // 内容就绪后，在同帧内切换面板（无空窗期）
+    $('#mc-chat-images-panel, #mc-match-scoring-panel, #mc-file-manager-panel, #mc-general-panel').hide();
+    $(`#mc-${tab}-panel`).show();
 }

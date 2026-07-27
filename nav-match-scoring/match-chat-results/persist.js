@@ -31,6 +31,7 @@ export function restoreChatResults() {
         const files = getMSFiles();
         const validIds = new Set(files.map(f => f.id));
         let anyCleaned = false;
+        const pending = [];
         for (let i = 0; i < chat.length; i++) {
             const msg = chat[i];
             const has = msg?.extra?.mcMatchResults?.length;
@@ -44,9 +45,26 @@ export function restoreChatResults() {
                 file: { id: d.fileId, displayName: d.displayName, filePath: d.filePath, type: d.type },
                 totalScore: d.totalScore,
             }));
-            renderChatResults(i, results);
+            pending.push({ index: i, results });
         }
         if (anyCleaned) getContext().saveChat();
+
+        // ⭐ 分批渲染：每帧渲染 3 条，避免同时触发大量 setTimeout 动画
+        const BATCH_SIZE = 3;
+        let idx = 0;
+        function renderBatch() {
+            const end = Math.min(idx + BATCH_SIZE, pending.length);
+            for (; idx < end; idx++) {
+                const p = pending[idx];
+                renderChatResults(p.index, p.results);
+            }
+            if (idx < pending.length) {
+                requestAnimationFrame(renderBatch);
+            }
+        }
+        if (pending.length > 0) {
+            requestAnimationFrame(renderBatch);
+        }
     } catch (err) {
         console.warn('ModalChat: restoreChatResults error', err);
     }

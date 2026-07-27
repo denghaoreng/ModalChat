@@ -55,21 +55,38 @@ export async function renderChatResults(messageId, results) {
                         if (src) showFileEnlarge(src);
                     }
                 });
-            setupDragDeformation($msg, '.mc-ms-slot-item img, .mc-ms-slot-item video');
+            if ($msg.find('.mc-ms-slot-item img, .mc-ms-slot-item video').length) {
+                setupDragDeformation($msg, '.mc-ms-slot-item img, .mc-ms-slot-item video');
+            }
             if (distance === 0) {
                 const presets = getBouncePresets();
                 if (presets && presets.length > 0) {
-                    let _demoTimer = null;
-                    function _tryAutoBounce() {
-                        const $imgs = $msg.find('.mc-ms-slot-item img, .mc-ms-slot-item video');
-                        let allLoaded = true;
-                        $imgs.each(function () {
-                            if (this.tagName === 'IMG' && (!this.complete || !this.naturalWidth)) allLoaded = false;
-                        });
-                        if (!allLoaded) { _demoTimer = setTimeout(_tryAutoBounce, 400); return; }
-                        $imgs.each(function () { autoBounce(this, presets); });
+                    const $bounceImgs = $msg.find('.mc-ms-slot-item img, .mc-ms-slot-item video');
+                    let loadedCount = 0;
+                    const totalImgs = $bounceImgs.length;
+                    if (totalImgs === 0) return;
+                    function tryBounce() {
+                        if (loadedCount >= totalImgs) {
+                            $bounceImgs.each(function () { autoBounce(this, presets); });
+                        }
                     }
-                    _demoTimer = setTimeout(_tryAutoBounce, 600);
+                    $bounceImgs.each(function () {
+                        if (this.tagName === 'IMG') {
+                            if (this.complete && this.naturalWidth) {
+                                loadedCount++;
+                                tryBounce();
+                            } else {
+                                this.addEventListener('load', function onLoad() {
+                                    this.removeEventListener('load', onLoad);
+                                    loadedCount++;
+                                    tryBounce();
+                                });
+                            }
+                        } else {
+                            loadedCount++;
+                            tryBounce();
+                        }
+                    });
                 }
             }
         } catch (err) {
@@ -199,8 +216,7 @@ function buildSlotHtml(results, slot, autoPlay, slotCfgIdx) {
                 const $newItem = $container.find(`.mc-ms-slot-item[data-slot-idx="${currentIdx}"]`).show();
                 $newItem.find('img, video').each(function () {
                     this.style.animation = 'none';
-                    void this.offsetHeight;
-                    this.style.animation = '';
+                    requestAnimationFrame(() => { this.style.animation = ''; });
                 });
                 const $newMedia = getMedia(currentIdx);
                 if ($newMedia.length) $newMedia[0].play().catch(() => {});
