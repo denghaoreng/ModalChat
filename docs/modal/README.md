@@ -59,7 +59,7 @@ ModalChat/
 │   ├── file-state.js             # ★ 状态管理
 │   ├── file-url.js               # 文件 URL 解析
 │   ├── file-picker-popup.js      # 文件选择器弹窗
-│   ├── file-manager-ui.js        # 重新导出 hub
+
 │   └── file-registry.js          # 注册表查询操作
 │
 └── nav-general-settings/         # 「通用配置」标签页

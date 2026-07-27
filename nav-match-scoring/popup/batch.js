@@ -1,10 +1,10 @@
 // nav-match-scoring/popup-batch.js — 批量新增弹窗
 // 弹出选择文件、设置共用名称/标签/内容，"选择文件"按钮调用文件管理器弹窗
 
-import { callGenericPopup } from '../../../../popup.js';
-import { getMatchScoringData, saveSettings } from '../data.js';
-import { escapeHtml, generateId } from '../shared/utils.js';
-import { showFilePickerPopup } from '../nav-file-manager/file-picker-popup.js';
+import { callGenericPopup } from '../../../../../popup.js';
+import { getMatchScoringData, saveSettings } from '../../core/data.js';
+import { escapeHtml, generateId } from '../../shared/utils.js';
+import { showFilePickerPopup } from '../../nav-file-manager/file-picker-popup.js';
 
 const POPUP_TYPE = Object.freeze({ TEXT: 1, CONFIRM: 2, INPUT: 3, DISPLAY: 4 });
 
@@ -140,7 +140,7 @@ const data = getMatchScoringData();
     toastr.success(`已添加 ${selectedEntries.length} 个文件到匹配打分`);
 
     // 刷新文件列表
-    const { renderFileDisplay, bindFileDisplayEvents } = await import('./file-display.js');
+    const { renderFileDisplay, bindFileDisplayEvents } = await import('../file-display.js');
     renderFileDisplay();
     bindFileDisplayEvents();
 }

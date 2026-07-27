@@ -1,6 +1,6 @@
 // nav-file-manager/file-registry.js — 文件注册表查询操作
 
-import { getRegistry, getRegistryById, getRegistryBySource } from '../data.js';
+import { getRegistryEntries as getRegistry, getRegistryById, getRegistryBySource } from '../core/data.js';
 
 /**
  * 按源模块查询

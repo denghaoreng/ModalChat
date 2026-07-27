@@ -1,6 +1,6 @@
 // nav-match-scoring/drawer.js — 匹配打分子导航（文件展示 / 匹配配置 / 轮播配置）
 
-import { getMatchScoringData } from '../data.js';
+import { getMatchScoringData } from '../core/data.js';
 
 export let lastSubTab = 'files';
 

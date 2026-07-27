@@ -1,6 +1,6 @@
 // nav-match-scoring/carousel-config.js — 轮播配置 UI（插位槽）
 
-import { getMatchScoringData, saveSettings, getAnimationTypes } from '../data.js';
+import { getMatchScoringData, saveSettings, getAnimationTypes } from '../core/data.js';
 import { escapeHtml } from '../shared/utils.js';
 
 function defaultSlots() {

@@ -1,6 +1,6 @@
 // nav-general-settings/anim-types.js — 轮播类型子标签页
 
-import { getAnimationTypes, saveSettings } from '../data.js';
+import { getAnimationTypes, saveSettings } from '../core/data.js';
 import { escapeHtml } from '../shared/utils.js';
 
 // ==================== 渲染 ====================

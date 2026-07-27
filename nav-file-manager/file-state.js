@@ -12,6 +12,10 @@ export let fmSearchMode = 'simple';
 export let fmSearchTriggered = false;
 export const FM_PAGE_SIZE = 50;
 
+/** 活动渲染目标（用于弹窗场景） */
+export let activeRenderTarget = null;
+export function setActiveRenderTarget(selector) { activeRenderTarget = selector; }
+
 export function setCurrentDir(v) { currentDir = v; }
 export function setSelectedFiles(v) { selectedFiles = v; }
 export function setIsSelectionMode(v) { isSelectionMode = v; }

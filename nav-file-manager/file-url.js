@@ -1,6 +1,6 @@
 // nav-file-manager/file-url.js — 获取文件可访问 URL
 
-import { getRegistryById } from '../data.js';
+import { getRegistryById } from '../core/data.js';
 
 /**
  * 从注册表条目获取文件可访问 URL

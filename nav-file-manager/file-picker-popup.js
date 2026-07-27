@@ -4,8 +4,9 @@
 // 其他模块可以导入此函数，无需关心文件管理器内部实现。
 
 import { callGenericPopup } from '../../../../popup.js';
-import { getRegistryById } from '../data.js';
-import { renderFileManager, setActiveFileManagerTarget } from './file-render.js';
+import { getRegistryById } from '../core/data.js';
+import { renderFileManager } from './file-render.js';
+import { setActiveRenderTarget } from './file-state.js';
 import { POPUP_TYPE } from '../shared/popup-type.js';
 import {
     currentDir, selectedFiles, isSelectionMode,
@@ -70,7 +71,7 @@ export async function showFilePickerPopup(options = {}) {
     // ====== 设置活动渲染目标 ======
     // 此后所有无参的 renderFileManager() 调用（如目录切换、排序等事件）都会渲染到弹窗内
     const scrollSelector = `#${containerId}-scroll`;
-    setActiveFileManagerTarget(scrollSelector);
+    setActiveRenderTarget(scrollSelector);
 
     // ====== 渲染文件管理器到弹窗 ======
     // 先追加到 DOM 让 renderFileManager 能找到容器
@@ -130,7 +131,7 @@ export async function showFilePickerPopup(options = {}) {
             $(document).off('.picker-sel');
 
             // 恢复活动渲染目标
-            setActiveFileManagerTarget(null);
+            setActiveRenderTarget(null);
 
             // 恢复原始文件管理器状态
             setCurrentDir(savedState.currentDir);

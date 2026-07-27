@@ -1,6 +1,6 @@
 // nav-general-settings/ui-config.js — UI配置子标签页
 
-import { getGeneralSettings, updateGeneralSettings } from '../data.js';
+import { getGeneralSettings, updateGeneralSettings } from '../core/data.js';
 
 export function renderUiConfig() {
     const gs = getGeneralSettings();

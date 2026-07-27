@@ -1,8 +1,7 @@
 // nav-file-manager/file-events.js — 文件管理器事件绑定
 
-import { currentSettings, getGeneralSettings, updateGeneralSettings } from '../data.js';
+import { currentSettings, getGeneralSettings, updateGeneralSettings, getRegistryById, renameDirectory } from '../core/data.js';
 import { uploadFile, deleteFile, renameFile, createDirectory, deleteDirectory } from '../shared/file-service.js';
-import { renameDirectory } from '../data.js';
 import { escapeHtml, formatFileSize, formatDate } from '../shared/utils.js';
 import { callGenericPopup } from '../../../../popup.js';
 import { getTypeLabel, getFileIcon } from '../shared/file-icons.js';
@@ -132,7 +131,6 @@ export function bindManagerEvents() {
     // 文件详情
     $(document).off('click', '.mc-file-detail').on('click', '.mc-file-detail', async function () {
         const id = $(this).data('id');
-        const { getRegistryById } = await import('../data.js');
         const e = await getRegistryById(id);
         if (!e) { toastr.error('未找到文件'); return; }
 
@@ -183,7 +181,6 @@ export function bindManagerEvents() {
         $(document).off('click', '.mc-detail-rename').on('click', '.mc-detail-rename', async function () {
             const fid = $(this).data('id');
             const dlg = $(this).closest('.popup');
-            const { getRegistryById } = await import('../data.js');
             const entry = await getRegistryById(fid);
             const oldName = entry ? (entry.displayName || '') : '';
             const newName = await callGenericPopup('<label>输入新展示名称：</label>', POPUP_TYPE.INPUT, oldName, { okButton: '确定', cancelButton: '取消' });
@@ -215,7 +212,6 @@ export function bindManagerEvents() {
     // 文件重命名
     $(document).off('click', '.mc-file-rename').on('click', '.mc-file-rename', async function () {
         const id = $(this).data('id');
-        const { getRegistryById } = await import('../data.js');
         const entry = await getRegistryById(id);
         const oldName = entry ? (entry.displayName || '') : '';
         const newName = await callGenericPopup('<label>输入新展示名称：</label>', POPUP_TYPE.INPUT, oldName, { okButton: '确定', cancelButton: '取消' });
@@ -262,8 +258,8 @@ export function bindManagerEvents() {
         setFmSearchTriggered(true);
         await renderFileManager();
     });
-    // 回车搜索
-    $('#mc-file-search').off('keydown').on('keydown', async function (e) {
+    // 搜索回车（使用事件委托，避免弹窗场景下多个 #mc-file-search 冲突）
+    $(document).off('keydown.fm-search', '#mc-file-search').on('keydown.fm-search', '#mc-file-search', async function (e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             setFmSearchTriggered(true);
@@ -320,8 +316,8 @@ export function bindManagerEvents() {
         _savedDetailSize = 0; _savedGridSize = 0;
     });
 
-    // 全选/全不选切换
-    $(document).off('click', '#mc-select-toggle').on('click', '#mc-select-toggle', function () {
+    // 全选/全不选切换（使用命名空间，避免误删弹窗 picker 的 .picker-sel 处理器）
+    $(document).off('click.fm-select-toggle', '#mc-select-toggle').on('click.fm-select-toggle', '#mc-select-toggle', function () {
         const $all = $('.mc-file-checkbox');
         const allChecked = $all.length > 0 && $all.filter(':checked').length === $all.length;
         if (allChecked) {
@@ -335,8 +331,8 @@ export function bindManagerEvents() {
         }
     });
 
-    // 表头全选框
-    $(document).off('change', '#mc-select-all').on('change', '#mc-select-all', function () {
+    // 表头全选框（使用命名空间，避免误删弹窗 picker 的 .picker-sel 处理器）
+    $(document).off('change.fm-select-all', '#mc-select-all').on('change.fm-select-all', '#mc-select-all', function () {
         const checked = $(this).is(':checked');
         $('.mc-file-checkbox').prop('checked', checked);
         if (checked) {
@@ -346,8 +342,8 @@ export function bindManagerEvents() {
         }
     });
 
-    // 单个复选框
-    $(document).off('change', '.mc-file-checkbox').on('change', '.mc-file-checkbox', function () {
+    // 单个复选框（使用命名空间，避免误删外部绑定的处理器如弹窗 picker）
+    $(document).off('change.fm-checkbox', '.mc-file-checkbox').on('change.fm-checkbox', '.mc-file-checkbox', function () {
         const id = $(this).data('id');
         if ($(this).is(':checked')) selectedFiles.add(id);
         else selectedFiles.delete(id);
@@ -385,7 +381,6 @@ export function bindManagerEvents() {
             if (!newBase) { toastr.error('请输入新名称'); return; }
             let idx = 1;
             for (const id of ids) {
-                const { getRegistryById } = await import('../data.js');
                 const entry = await getRegistryById(id);
                 const ext = entry?.serverFilename ? '.' + entry.serverFilename.split('.').pop() : '';
                 renameFile(id, newBase + '_' + idx + ext);

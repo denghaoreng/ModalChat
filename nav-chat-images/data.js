@@ -1,6 +1,7 @@
 // nav-chat-images/data.js — 规则/规则集/角色集数据
 
-import { getChatImagesData, saveSettings, currentSettings } from '../data.js';
+import { getChatImagesData, saveSettings } from '../core/data.js';
+import { currentSettings } from '../core/data.js';
 import { generateId } from '../shared/utils.js';
 import { getFileUrl } from '../nav-file-manager/file-url.js';
 

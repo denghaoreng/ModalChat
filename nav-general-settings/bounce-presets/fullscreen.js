@@ -3,7 +3,7 @@
  */
 
 import { BounceEditor } from '../../shared/bounce-editor/index.js';
-import { getBounceCanvasSize } from '../../data.js';
+import { getBounceCanvasSize } from '../../core/data.js';
 import { _PARAM_DEFS, _paramCellHtml } from './params.js';
 
 /**

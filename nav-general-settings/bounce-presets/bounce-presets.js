@@ -4,7 +4,7 @@
  * 从子模块导入参数渲染、全屏编辑等功能。
  */
 
-import { getBouncePresets, updateBouncePresets, getBounceRefImage, updateBounceRefImage, getBounceCanvasSize, updateBounceCanvasSize, saveSettings } from '../../data.js';
+import { getBouncePresets, updateBouncePresets, getBounceRefImage, updateBounceRefImage, getBounceCanvasSize, updateBounceCanvasSize, saveSettings } from '../../core/data.js';
 import { BounceEditor } from '../../shared/bounce-editor/index.js';
 import { _renderParams, _applyParamInputs, _refreshPointList, _PARAM_DEFS, _setCopiedPoint } from './params.js';
 import { _openFullscreen } from './fullscreen.js';

@@ -1,8 +1,8 @@
 // matcher.js — 匹配引擎：正则匹配、加权随机、图片队列
 
 import { getContext } from '../../../../extensions.js';
-import { getEnabledRules, getChatImagesData as getRulesData } from './data.js';
-import { getGeneralSettings, getRegistryById } from '../data.js';
+import { getEnabledRules } from './data.js';
+import { getGeneralSettings, getRegistryById, getChatImagesData as getRulesData } from '../core/data.js';
 import { escapeHtml, hexToRgb } from '../shared/utils.js';
 import { getFileUrl } from '../nav-file-manager/file-url.js';
 

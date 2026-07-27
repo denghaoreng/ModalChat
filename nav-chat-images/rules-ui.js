@@ -1,11 +1,11 @@
 // nav-chat-images/rules-ui.js — 规则界面 UI
 
 import { getContext } from '../../../../extensions.js';
-import { getChatImagesData, currentSettings, saveSettings } from '../data.js';
+import { getChatImagesData, currentSettings, saveSettings } from '../core/data.js';
 import { getRules, getRuleSets, getCharSets, getRuleById, addRule, updateRule, deleteRule, addRuleSet, deleteRuleSet, addCharSet, deleteCharSet, getImageUrlByRegistry } from './data.js';
-import { getRegistryById } from '../data.js';
+import { getRegistryById } from '../core/data.js';
 import { escapeHtml } from '../shared/utils.js';
-import { enterSelectionMode } from '../nav-file-manager/file-manager-ui.js';
+import { enterSelectionMode } from '../nav-file-manager/index.js';
 
 let lastSubTab = 'char-sets';
 

@@ -1,6 +1,7 @@
 // nav-match-scoring/match-config.js — 匹配配置 UI（与旧版 MatchScoring 功能一致）
 
-import { getMatchScoringData, saveSettings, currentSettings } from '../data.js';
+import { getMatchScoringData, saveSettings } from '../core/data.js';
+import { currentSettings } from '../core/data.js';
 import { escapeHtml } from '../shared/utils.js';
 
 export function renderMatchConfig() {

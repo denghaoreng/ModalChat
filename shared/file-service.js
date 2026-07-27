@@ -1,7 +1,7 @@
 // shared/file-service.js — 服务端文件操作
 
 import { getContext } from '../../../../extensions.js';
-import { addRegistryEntry, removeRegistryEntry, updateRegistryEntry, getRegistryById, getRegistryEntries, getDirectories, addDirectory, createDirWithFile, removeDirectoryRecursive } from '../data.js';
+import { addRegistryEntry, removeRegistryEntry, updateRegistryEntry, getRegistryById, getRegistryEntries, getDirectories, addDirectory, createDirWithFile, removeDirectoryRecursive } from '../core/data.js';
 import { generateServerFilename } from './utils.js';
 
 /**
@@ -229,4 +229,4 @@ export function getDirectoryList() {
  * @param {string} dirPath
  * @returns {Array}
  */
-export { getFilesInDirectory } from '../data.js';
+export { getFilesInDirectory } from '../core/data.js';

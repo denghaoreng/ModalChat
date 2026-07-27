@@ -1,41 +1,28 @@
 // nav-file-manager/file-render.js — 文件管理器渲染
 
-import { currentSettings, getGeneralSettings } from '../data.js';
+import { currentSettings, getGeneralSettings } from '../core/data.js';
 import { escapeHtml, formatFileSize, formatDate } from '../shared/utils.js';
 import { getTypeLabel, getFileIcon } from '../shared/file-icons.js';
 import {
     currentDir, selectedFiles,
     fmCurrentPage, fmSortBy, fmSortDesc, fmViewMode, fmSearchMode, fmSearchTriggered,
     FM_PAGE_SIZE,
+    activeRenderTarget,
     setFmCurrentPage, setFmSearchTriggered, setFmViewMode,
 } from './file-state.js';
-
-/**
- * 活动渲染目标（用于弹窗等场景，让所有无参的 renderFileManager() 调用渲染到指定容器）
- * 由外部（如文件选择器弹窗）设置，使用完毕后务必清空
- */
-let _activeTarget = null;
-
-/**
- * 设置活动渲染目标
- * @param {string|null} selector - CSS 选择器，设为 null 恢复默认
- */
-export function setActiveFileManagerTarget(selector) {
-    _activeTarget = selector;
-}
 
 /**
  * 渲染文件管理器
  * @param {string|jQuery} [target] - 可选的目标容器（选择器或 jQuery 元素），不传则使用活动目标或 #mc-file-manager-panel
  */
 export async function renderFileManager(target) {
-    const $panel = target ? $(target) : (_activeTarget ? $(_activeTarget) : $('#mc-file-manager-panel'));
+    const $panel = target ? $(target) : (activeRenderTarget ? $(activeRenderTarget) : $('#mc-file-manager-panel'));
     if (!$panel.length) return;
 
     // 切换视图时清除选中状态
     selectedFiles.clear();
     // 保存搜索框的值（加载动画会替换面板内容）
-    const _savedSearch = $('#mc-file-search').val() || '';
+    const _savedSearch = $panel.find('#mc-file-search').val() || '';
     // 先显示加载态
     $panel.html(`
     <div style="padding:40px;text-align:center;color:var(--grey40);font-size:0.9em;">
@@ -316,10 +303,5 @@ export async function renderFileManager(target) {
         </div>
         ${fileListHtml}
     </div>`);
-    // 动态导入事件绑定，避免循环依赖
-    // 仅当未指定 target 时自动绑定（外部容器由调用方管理）
-    if (!target) {
-        const { bindManagerEvents } = await import('./file-events.js');
-        bindManagerEvents();
-    }
+    // 事件绑定由调用方自行管理（render 不隐式调用 bindManagerEvents）
 }

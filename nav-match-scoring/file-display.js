@@ -1,13 +1,13 @@
 // nav-match-scoring/file-display.js — 匹配打分文件列表（完整版）
 
-import { getMatchScoringData, saveSettings, currentSettings } from '../data.js';
+import { getMatchScoringData, saveSettings } from '../core/data.js';
+import { currentSettings } from '../core/data.js';
 import { escapeHtml, formatFileSize, debounce, generateId, AUDIO_EXTS, VIDEO_EXTS, detectFileType } from '../shared/utils.js';
 import { cleanupStaleExtraRefs } from './match-chat-results.js';
-import { showTagFilterPopup } from './popup-config.js';
+import { showTagFilterPopup, showBatchAddPopup } from './popup-config.js';
 import { callGenericPopup } from '../../../../popup.js';
 import { getLastResults } from './scorer.js';
 import { showFileEnlarge } from '../shared/file-enlarge.js';
-import { showBatchAddPopup } from './popup-batch.js';
 import { showFilePickerPopup } from '../nav-file-manager/file-picker-popup.js';
 
 const POPUP_TYPE = Object.freeze({ TEXT: 1, CONFIRM: 2, INPUT: 3, DISPLAY: 4 });
