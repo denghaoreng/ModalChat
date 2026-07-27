@@ -7,13 +7,9 @@ import { registerEventListeners, unregisterEventListeners } from './shell/messag
 // ==================== 生命周期 ====================
 
 export async function init() {
-    console.log('[MC-DEBUG] init() started');
     await loadSettings();
-    console.log('[MC-DEBUG] loadSettings done');
     addNavBarDrawer();
-    console.log('[MC-DEBUG] addNavBarDrawer done');
     registerEventListeners();
-    console.log('[MC-DEBUG] init() complete');
 }
 
 export async function onDelete() {

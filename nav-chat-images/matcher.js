@@ -28,8 +28,21 @@ export function clearAllImageTimers() {
 
 // ==================== 匹配逻辑 ====================
 
+/** @type {number} 自增 generation，用于阻止滑动时陈旧 performMatch 的结果覆盖 */
+let _ciGeneration = 0;
+
+/**
+ * 递增 generation 并清除指定消息的定时器（滑动时调用，防止旧定时器在异步匹配期间到期）
+ * @param {number|string} messageId
+ */
+export function cancelPendingMatch(messageId) {
+    _ciGeneration++;
+    clearImageTimer(messageId);
+}
+
 export async function performMatch(text) {
     if (!text) return;
+    const gen = _ciGeneration;
 
     const enabledRules = getEnabledRules();
     if (enabledRules.length === 0) {
@@ -67,6 +80,9 @@ export async function performMatch(text) {
             matchedBatches.push({ name: rs.name, items: rsItems });
         }
     }
+
+    // ⭐ 如果 generation 已变（用户又滑动了），丢弃此批结果
+    if (gen !== _ciGeneration) return;
 
     if (matchedBatches.length === 0) return;
 

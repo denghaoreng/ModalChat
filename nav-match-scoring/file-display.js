@@ -148,7 +148,7 @@ export async function renderFileDisplay() {
                     </div>
                     <span style="flex-shrink:0;margin-top:3px;font-size:0.75em;color:white;background:rgba(0,0,0,0.5);border-radius:3px;padding:2px 5px;line-height:1.2;"><i class="fa-solid ${typeIcon}"></i></span>
                 </div>
-                <div style="text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-size:0.78em;" title="${escapeHtml(f.displayName || '')}">${escapeHtml(f.displayName || '未命名')}${score > 0 ? ` <span style="color:#ffd700;">⭐${score.toFixed(1)}</span>` : ''}</div>
+                <div style="text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-bottom:2px;font-size:0.78em;" title="${escapeHtml(f.displayName || '')}">${score > 0 ? `<span style="color:#ffd700;flex-shrink:0;margin-right:3px;">⭐${score.toFixed(1)}</span>` : ''}${escapeHtml(f.displayName || '未命名')}</div>
                 <div style="display:flex;align-items:center;gap:4px;margin:3px 0;font-size:0.7em;">
                     <span style="color:var(--grey40);white-space:nowrap;">权重</span>
                     <input type="range" class="mc-ms-file-weight" data-id="${escapeHtml(f.id)}" value="${f.weight ?? 1}" min="0" max="5" step="0.1" style="flex:1;height:3px;">
