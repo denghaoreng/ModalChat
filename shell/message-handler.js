@@ -77,7 +77,7 @@ function onMessageReceived(data) {
 
     // chat-images 匹配（异步执行，matcher 内部处理队列）
     if (ciEnabled) {
-        import('../nav-chat-images/matcher.js').then(m => m.performMatch(aiText)).catch(() => {});
+        import('../nav-chat-images/matcher/engine.js').then(m => m.performMatch(aiText)).catch(() => {});
     }
 
     // match-scoring 评分
@@ -156,7 +156,7 @@ function onMessageSwiped() {
 
     // ⭐ 清除 chat-images 的待执行定时器 + 递增 generation
     //    防止旧队列定时器在异步匹配期间到期插入旧图片
-    import('../nav-chat-images/matcher.js').then(m => m.cancelPendingMatch(lastAiIndex)).catch(() => {});
+    import('../nav-chat-images/matcher/queue.js').then(m => m.cancelPendingMatch(lastAiIndex)).catch(() => {});
 
     if (isNew) {
         // ⭐ 文本变化：重新匹配（新生成或不同缓存回复）
@@ -172,7 +172,7 @@ function onChatChanged() {
         cr.renderResultsPanel(null);
         cr.cleanupAllChatResults();
     }).catch(() => {});
-    import('../nav-chat-images/matcher.js').then(m => m.clearAllImageTimers()).catch(() => {});
+    import('../nav-chat-images/matcher/queue.js').then(m => m.clearAllImageTimers()).catch(() => {});
 }
 
 function onChatLoaded() {

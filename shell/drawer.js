@@ -85,7 +85,7 @@ export async function switchTab(tab) {
     switch (tab) {
         case 'chat-images': {
             await new Promise(r => requestAnimationFrame(r));
-            const { renderChatImages, bindChatImagesEvents } = await import('../nav-chat-images/index.js');
+            const { renderChatImages, bindChatImagesEvents } = await import('../nav-chat-images/ui/index.js');
             renderChatImages();
             bindChatImagesEvents();
             break;
