@@ -1,6 +1,6 @@
 # ModalChat 多模态聊天插件文档
 
-> 最后更新：2026年7月27日
+> 最后更新：2026年7月28日
 
 ## 概述
 
@@ -21,10 +21,21 @@ ModalChat 是 SillyTavern 的第三方扩展插件，融合了 chat-images 和 M
 ```
 ModalChat/
 ├── index.js                      # ★ 入口：生命周期、导航栏、事件注册
-├── data.js                       # ★ 全局数据层（多文件存储）
 ├── style.css                     # 全局样式
 ├── settings.html                 # 扩展设置模板
 ├── manifest.json                 # 插件清单
+│
+├── core/                         # ★ 核心数据层
+│   ├── data.js                   # ★ 数据层 facade（多文件存储）
+│   ├── default-settings.js       # 默认值
+│   ├── data-migration.js         # 数据迁移
+│   ├── file-storage.js           # ★ 文件 I/O
+│   ├── registry-state.js         # ★ 注册表状态
+│   └── directory-manager.js      # 目录管理
+│
+├── shell/                        # ★ 导航栏与消息处理
+│   ├── drawer.js                 # ★ 导航栏 Drawer + 标签切换
+│   └── message-handler.js        # ★ 事件回调
 │
 ├── shared/                       # 共享模块
 │   ├── utils.js                  # 工具函数
@@ -36,34 +47,54 @@ ModalChat/
 │   └── image-drag-physics/       # 图片拖拽变形物理引擎
 │
 ├── nav-chat-images/              # 「聊天图片」标签页
-│   ├── index.js                  # 薄导入层
-│   ├── data.js                   # 规则/规则集/角色集 CRUD
-│   ├── rules-ui.js               # 规则界面 UI（含子导航）
-│   └── matcher.js                # 正则匹配引擎
+│   ├── domain/                   # 数据层 CRUD
+│   │   ├── char-sets.js          # 角色集 CRUD（含级联删除）
+│   │   ├── rule-sets.js          # 规则集 CRUD（含级联删除）
+│   │   ├── rules.js              # 规则 CRUD
+│   │   └── helpers.js            # 工具函数
+│   ├── matcher/                  # ★ 正则匹配引擎
+│   │   ├── engine.js             # ★ 匹配主逻辑
+│   │   ├── single-rule.js        # 单条规则匹配
+│   │   ├── queue.js              # 定时器管理
+│   │   └── utils.js              # 工具函数
+│   ├── ui/                       # ★ UI 层（含分页/搜索按钮触发/复制/级联删除）
+│   │   ├── index.js              # ★ 主渲染入口 + 事件绑定
+│   │   ├── char-sets.js          # 角色集 UI
+│   │   ├── rule-sets.js          # 规则集 UI
+│   │   ├── rules.js              # 规则 UI
+│   │   ├── settings.js           # （已废弃）
+│   │   └── carousel-settings.js  # ★ 轮播配置（简化版）
+│   ├── popup/                    # 弹窗
+│   │   ├── batch.js              # 批量新增/修改
+│   │   └── regex-help.js         # ★ 正则手册
+│   └── carousel/                 # ★ 聊天图片轮播（与匹配打分独立）
+│       ├── bubble.js             # ★ 聊天气泡轮播渲染
+│       └── persist.js            # 持久化/恢复
 │
 ├── nav-match-scoring/            # 「匹配打分」标签页
-│   ├── index.js                  # 薄导入层
-│   ├── drawer.js                 # 子导航栏渲染（文件展示/匹配配置/轮播配置）
-│   ├── file-display.js           # 文件展示 UI
+│   ├── drawer.js                 # 子导航栏渲染
+│   ├── file-display.js           # 文件展示 UI（搜索按钮/分页可填）
 │   ├── match-config.js           # 匹配配置 UI
-│   ├── scorer.js                 # 评分引擎
-│   ├── carousel-config.js        # 轮播插位配置
-│   ├── match-chat-results.js     # 匹配结果聊天气泡渲染
-│   ├── popup-config.js           # 配置弹窗（关联词/停用词/关键词）
-│   └── popup-batch.js            # 批量新增弹窗
+│   ├── scorer.js                 # ★ 评分引擎 re-export hub
+│   ├── carousel-config.js        # ★ 轮播插位配置
+│   ├── match-chat-results.js     # 匹配结果 re-export hub
+│   ├── popup-config.js           # 配置弹窗 re-export hub
+│   ├── scorer/                   # 评分引擎子模块
+│   ├── match-chat-results/       # 匹配结果渲染子模块
+│   │   ├── panel.js              # 结果面板
+│   │   ├── bubble.js             # ★ 聊天气泡轮播
+│   │   └── persist.js            # 持久化/恢复
+│   └── popup/                    # 配置弹窗子模块
 │
-├── nav-file-manager/             # 「文件管理」标签页（新增）
-│   ├── index.js                  # 薄导入层
+├── nav-file-manager/             # 「文件管理」标签页
 │   ├── file-render.js            # ★ 文件管理器渲染
 │   ├── file-events.js            # ★ 事件绑定
 │   ├── file-state.js             # ★ 状态管理
-│   ├── file-url.js               # 文件 URL 解析
+│   ├── file-url.js               # 文件 URL 解析（async）
 │   ├── file-picker-popup.js      # 文件选择器弹窗
-
 │   └── file-registry.js          # 注册表查询操作
 │
 └── nav-general-settings/         # 「通用配置」标签页
-    ├── index.js                  # 薄导入层
     ├── settings-ui.js            # 子导航调度
     ├── ui-config.js              # UI 配置子页
     ├── anim-types.js             # 轮播类型编辑子页
