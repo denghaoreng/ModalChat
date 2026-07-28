@@ -6,7 +6,7 @@ import { addCharSet, deleteCharSet } from '../domain/char-sets.js';
 import { addRuleSet, deleteRuleSet } from '../domain/rule-sets.js';
 import { getRules, addRule, deleteRule } from '../domain/rules.js';
 import { addImageToRule } from '../domain/helpers.js';
-import { generateId } from '../../shared/utils.js';
+import { generateId, debounce } from '../../shared/utils.js';
 import { showFilePickerPopup } from '../../nav-file-manager/file-picker-popup.js';
 import { renderCharSets, triggerCSSearch, triggerCSClear } from './char-sets.js';
 import { saveRulesetFilter, triggerRuleSearch, getRulePage, setRulePage, setRulePageSize } from './rules.js';
@@ -67,7 +67,13 @@ async function renderSubTabContent(tab) {
     }
 }
 
+// 防抖保存（输入类操作 300ms 内去重）
+const _debouncedSave = debounce(() => saveSettings(), 300);
+let _eventsBound = false;
+
 export function bindChatImagesEvents() {
+    if (_eventsBound) return;
+    _eventsBound = true;
     $(document).off('click', '.mc-ci-tab').on('click', '.mc-ci-tab', async function () {
         lastSubTab = $(this).data('ci-tab');
         await renderChatImages();
@@ -133,7 +139,7 @@ export function bindChatImagesEvents() {
         const id = $(this).closest('.mc-ci-cs-item').data('id');
         const data = getChatImagesData();
         const cs = data.charSets.find(c => c.id === id);
-        if (cs) { cs.name = $(this).val(); saveSettings(); }
+        if (cs) { cs.name = $(this).val(); _debouncedSave(); }
     });
     // 启用/禁用
     $(document).off('change', '.mc-ci-cs-enabled').on('change', '.mc-ci-cs-enabled', function () {
@@ -202,13 +208,13 @@ export function bindChatImagesEvents() {
     $(document).off('input', '.mc-ci-rs-name').on('input', '.mc-ci-rs-name', function () {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
         const rs = getRuleSets().find(r => r.id === id);
-        if (rs) { rs.name = $(this).val(); saveSettings(); }
+        if (rs) { rs.name = $(this).val(); _debouncedSave(); }
     });
     // 内联编辑顺序
     $(document).off('input', '.mc-ci-rs-order').on('input', '.mc-ci-rs-order', function () {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
         const rs = getRuleSets().find(r => r.id === id);
-        if (rs) { rs.order = parseFloat($(this).val()) || 0; saveSettings(); }
+        if (rs) { rs.order = parseFloat($(this).val()) || 0; _debouncedSave(); }
     });
     // 启用/禁用
     $(document).off('change', '.mc-ci-rs-enabled').on('change', '.mc-ci-rs-enabled', function () {
@@ -266,22 +272,22 @@ export function bindChatImagesEvents() {
     $(document).off('input', '.mc-ci-rule-name').on('input', '.mc-ci-rule-name', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
         const rule = getRuleById(id);
-        if (rule) { rule.name = $(this).val(); saveSettings(); }
+        if (rule) { rule.name = $(this).val(); _debouncedSave(); }
     });
     $(document).off('input', '.mc-ci-rule-regex').on('input', '.mc-ci-rule-regex', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
         const rule = getRuleById(id);
-        if (rule) { rule.regex = $(this).val(); saveSettings(); }
+        if (rule) { rule.regex = $(this).val(); _debouncedSave(); }
     });
     $(document).off('input', '.mc-ci-rule-order').on('input', '.mc-ci-rule-order', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
         const rule = getRuleById(id);
-        if (rule) { rule.order = parseFloat($(this).val()) || 0; saveSettings(); }
+        if (rule) { rule.order = parseFloat($(this).val()) || 0; _debouncedSave(); }
     });
     $(document).off('input', '.mc-ci-rule-duration').on('input', '.mc-ci-rule-duration', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
         const rule = getRuleById(id);
-        if (rule) { rule.duration = parseFloat($(this).val()) || 0; saveSettings(); }
+        if (rule) { rule.duration = parseFloat($(this).val()) || 0; _debouncedSave(); }
     });
     // 启用/禁用
     $(document).off('change', '.mc-ci-rule-enabled').on('change', '.mc-ci-rule-enabled', function () {
@@ -386,7 +392,7 @@ export function bindChatImagesEvents() {
             const rule = getRuleById(ruleId);
             if (rule) {
                 const img = rule.images.find(i => i.registryId === regId);
-                if (img) { img.weight = val; saveSettings(); }
+                if (img) { img.weight = val; _debouncedSave(); }
             }
         }, 300);
     });

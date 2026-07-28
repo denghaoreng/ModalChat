@@ -40,12 +40,7 @@ export async function renderRules() {
     const sortBy = $('#mc-ci-rule-sort').val() || 'order';
     const pageSize = _rulePageSize;
 
-    // 预解析所有图片 URL（getImageUrlByRegistry 是异步的）
-    const urlCache = {};
-    const allRegIds = new Set();
-    for (const r of rules) for (const img of (r.images || [])) allRegIds.add(img.registryId);
-    await Promise.all([...allRegIds].map(async id => { urlCache[id] = await getImageUrlByRegistry(id); }));
-
+    // 先筛选/排序
     if (selectedSet) {
         if (selectedSet === '__unbound') {
             const validRsIds = new Set(ruleSets.map(rs => rs.id));
@@ -113,6 +108,14 @@ export async function renderRules() {
         <span>个</span>
         <span style="font-size:0.8em;color:var(--grey40);">共 ${totalRules} 个</span>
     </div>`;
+
+    // 仅解析当前页规则的 URL（之前筛选排序已过滤）
+    const urlCache = {};
+    const pageRegIds = new Set();
+    for (const r of pageRules) for (const img of (r.images || [])) pageRegIds.add(img.registryId);
+    if (pageRegIds.size > 0) {
+        await Promise.all([...pageRegIds].map(async id => { urlCache[id] = await getImageUrlByRegistry(id); }));
+    }
 
     if (totalRules === 0) {
         html += '<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">' + (searchTerm || selectedSet ? '未找到匹配的图片' : '暂无图片，点击 + 添加') + '</div>';
