@@ -41,6 +41,7 @@ export function renderCharSets() {
                 </label>
                 <span style="font-size:0.75em;color:var(--grey40);">${rsCount} 图片集</span>
                 <button class="mc-ci-cs-edit menu_button menu_button_icon" title="编辑此角色集下的图片集" style="font-size:0.8em;"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="mc-ci-cs-copy menu_button menu_button_icon" title="复制角色集" style="font-size:0.8em;"><i class="fa-regular fa-copy"></i></button>
                 <button class="mc-ci-cs-delete menu_button menu_button_icon" style="font-size:0.8em;color:var(--dangerColor);"><i class="fa-solid fa-trash-can"></i></button>
             </div>`;
         }

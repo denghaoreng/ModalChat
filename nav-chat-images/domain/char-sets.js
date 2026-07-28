@@ -24,7 +24,9 @@ export function updateCharSet(id, updates) {
 }
 
 export function deleteCharSet(id) {
+    const deletedRsIds = (d().ruleSets || []).filter(rs => rs.charSetId === id).map(rs => rs.id);
     d().charSets = d().charSets.filter(c => c.id !== id);
     d().ruleSets = d().ruleSets.filter(rs => rs.charSetId !== id);
+    d().rules = (d().rules || []).filter(r => !deletedRsIds.includes(r.ruleSetId));
     saveSettings();
 }

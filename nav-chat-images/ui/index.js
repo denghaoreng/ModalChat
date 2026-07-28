@@ -6,10 +6,11 @@ import { addCharSet, deleteCharSet } from '../domain/char-sets.js';
 import { addRuleSet, deleteRuleSet } from '../domain/rule-sets.js';
 import { getRules, addRule, deleteRule } from '../domain/rules.js';
 import { addImageToRule } from '../domain/helpers.js';
+import { generateId } from '../../shared/utils.js';
 import { showFilePickerPopup } from '../../nav-file-manager/file-picker-popup.js';
 import { renderCharSets, triggerCSSearch, triggerCSClear } from './char-sets.js';
-import { saveRulesetFilter } from './rules.js';
-import { saveRsCharSelect } from './rule-sets.js';
+import { saveRulesetFilter, triggerRuleSearch, getRulePage, setRulePage, setRulePageSize } from './rules.js';
+import { saveRsCharSelect, triggerRSSearch, getRSPage, setRSPage, setRSPageSize } from './rule-sets.js';
 import { renderRuleSets } from './rule-sets.js';
 import { renderRules } from './rules.js';
 import { renderCarouselSettings } from './carousel-settings.js';
@@ -78,10 +79,47 @@ export function bindChatImagesEvents() {
     $(document).off('change', '#mc-ci-ruleset-filter, #mc-ci-rule-sort, #mc-ci-rs-sort').on('change', '#mc-ci-ruleset-filter, #mc-ci-rule-sort, #mc-ci-rs-sort', function () {
         renderChatImages(); bindChatImagesEvents();
     });
-    let _ciSearchTimer;
-    $(document).off('input', '#mc-ci-rule-search, #mc-ci-rs-search').on('input', '#mc-ci-rule-search, #mc-ci-rs-search', function () {
-        clearTimeout(_ciSearchTimer);
-        _ciSearchTimer = setTimeout(() => { renderChatImages(); bindChatImagesEvents(); }, 200);
+    // 图片集搜索：点击按钮触发
+    $(document).off('click', '#mc-ci-rs-search-btn').on('click', '#mc-ci-rs-search-btn', function () {
+        triggerRSSearch();
+        renderChatImages(); bindChatImagesEvents();
+    });
+    // 图片搜索：点击按钮触发
+    $(document).off('click', '#mc-ci-rule-search-btn').on('click', '#mc-ci-rule-search-btn', function () {
+        triggerRuleSearch();
+        renderChatImages(); bindChatImagesEvents();
+    });
+    // === 分页：图片集 ===
+    $(document).off('click', '#mc-ci-rs-page-prev').on('click', '#mc-ci-rs-page-prev', function () {
+        setRSPage(getRSPage() - 1);
+        renderChatImages(); bindChatImagesEvents();
+    });
+    $(document).off('click', '#mc-ci-rs-page-next').on('click', '#mc-ci-rs-page-next', function () {
+        setRSPage(getRSPage() + 1);
+        renderChatImages(); bindChatImagesEvents();
+    });
+    $(document).off('input', '#mc-ci-rs-page-size').on('input', '#mc-ci-rs-page-size', function () {
+        const val = parseInt($(this).val());
+        if (!isNaN(val) && val >= 0 && val <= 1000) {
+            setRSPageSize(val || 10);
+            renderChatImages(); bindChatImagesEvents();
+        }
+    });
+    // === 分页：图片 ===
+    $(document).off('click', '#mc-ci-rule-page-prev').on('click', '#mc-ci-rule-page-prev', function () {
+        setRulePage(getRulePage() - 1);
+        renderChatImages(); bindChatImagesEvents();
+    });
+    $(document).off('click', '#mc-ci-rule-page-next').on('click', '#mc-ci-rule-page-next', function () {
+        setRulePage(getRulePage() + 1);
+        renderChatImages(); bindChatImagesEvents();
+    });
+    $(document).off('input', '#mc-ci-rule-page-size').on('input', '#mc-ci-rule-page-size', function () {
+        const val = parseInt($(this).val());
+        if (!isNaN(val) && val >= 0 && val <= 1000) {
+            setRulePageSize(val || 10);
+            renderChatImages(); bindChatImagesEvents();
+        }
     });
     // 角色集搜索：点击按钮才触发
     $(document).off('click', '#mc-ci-cs-search-btn').on('click', '#mc-ci-cs-search-btn', function () {
@@ -121,6 +159,39 @@ export function bindChatImagesEvents() {
         const id = $(this).closest('.mc-ci-cs-item').data('id');
         if (confirm('确定删除此角色集？')) { deleteCharSet(id); renderChatImages(); bindChatImagesEvents(); }
     });
+    // 复制角色集（批量操作，单次保存）
+    $(document).off('click', '.mc-ci-cs-copy').on('click', '.mc-ci-cs-copy', function () {
+        const id = $(this).closest('.mc-ci-cs-item').data('id');
+        const data = getChatImagesData();
+        const cs = data.charSets.find(c => c.id === id);
+        if (!cs) return;
+        // 1. 复制角色集
+        const newCsId = generateId('charset');
+        data.charSets.push({ id: newCsId, name: cs.name + ' (副本)', enabled: true });
+        // 2. 复制其下所有图片集，记录新旧ID映射
+        const idMap = {};
+        for (const rs of (data.ruleSets || []).filter(r => r.charSetId === cs.id)) {
+            const newRsId = generateId('ruleset');
+            idMap[rs.id] = newRsId;
+            data.ruleSets.push({ id: newRsId, name: rs.name, enabled: true, order: data.ruleSets.length, charSetId: newCsId });
+        }
+        // 3. 级联复制图片
+        for (const rs of (data.ruleSets || []).filter(r => r.charSetId === newCsId)) {
+            const oldRsId = Object.entries(idMap).find(([, v]) => v === rs.id)?.[0];
+            if (!oldRsId) continue;
+            for (const rule of (data.rules || []).filter(r => r.ruleSetId === oldRsId)) {
+                const newRuleId = generateId('rule');
+                data.rules.push({
+                    id: newRuleId, name: rule.name, regex: rule.regex || '',
+                    enabled: true, order: data.rules.length, duration: rule.duration || 5000,
+                    ruleSetId: rs.id, images: (rule.images || []).map(img => ({ ...img })),
+                    _expanded: true,
+                });
+            }
+        }
+        saveSettings();
+        renderChatImages(); bindChatImagesEvents();
+    });
 
     // === 规则集 ===
     // 角色集筛选变更
@@ -132,6 +203,12 @@ export function bindChatImagesEvents() {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
         const rs = getRuleSets().find(r => r.id === id);
         if (rs) { rs.name = $(this).val(); saveSettings(); }
+    });
+    // 内联编辑顺序
+    $(document).off('input', '.mc-ci-rs-order').on('input', '.mc-ci-rs-order', function () {
+        const id = $(this).closest('.mc-ci-rs-item').data('id');
+        const rs = getRuleSets().find(r => r.id === id);
+        if (rs) { rs.order = parseFloat($(this).val()) || 0; saveSettings(); }
     });
     // 启用/禁用
     $(document).off('change', '.mc-ci-rs-enabled').on('change', '.mc-ci-rs-enabled', function () {
@@ -161,6 +238,27 @@ export function bindChatImagesEvents() {
     $(document).off('click', '.mc-ci-rs-delete').on('click', '.mc-ci-rs-delete', function () {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
         if (confirm('确定删除此图片集？')) { deleteRuleSet(id); renderChatImages(); bindChatImagesEvents(); }
+    });
+    // 复制图片集（含其下所有图片，批量操作单次保存）
+    $(document).off('click', '.mc-ci-rs-copy').on('click', '.mc-ci-rs-copy', function () {
+        const id = $(this).closest('.mc-ci-rs-item').data('id');
+        const data = getChatImagesData();
+        const rs = data.ruleSets.find(r => r.id === id);
+        if (!rs) return;
+        // 1. 复制图片集
+        const newRsId = generateId('ruleset');
+        data.ruleSets.push({ id: newRsId, name: rs.name + ' (副本)', enabled: true, order: data.ruleSets.length, charSetId: rs.charSetId || '' });
+        // 2. 复制其下所有图片
+        for (const rule of (data.rules || []).filter(r => r.ruleSetId === rs.id)) {
+            data.rules.push({
+                id: generateId('rule'), name: rule.name, regex: rule.regex || '',
+                enabled: true, order: data.rules.length, duration: rule.duration || 5000,
+                ruleSetId: newRsId, images: (rule.images || []).map(img => ({ ...img })),
+                _expanded: true,
+            });
+        }
+        saveSettings();
+        renderChatImages(); bindChatImagesEvents();
     });
 
     // === 规则 ===
@@ -246,6 +344,21 @@ export function bindChatImagesEvents() {
     $(document).off('click', '.mc-ci-rule-delete').on('click', '.mc-ci-rule-delete', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
         if (confirm('确定删除此图片？')) { deleteRule(id); renderChatImages(); bindChatImagesEvents(); }
+    });
+    // 复制规则（含图片引用，单次保存）
+    $(document).off('click', '.mc-ci-rule-copy').on('click', '.mc-ci-rule-copy', function () {
+        const id = $(this).closest('.mc-ci-rule-item').data('id');
+        const rule = getRuleById(id);
+        if (!rule) return;
+        const data = getChatImagesData();
+        data.rules.push({
+            id: generateId('rule'), name: rule.name + ' (副本)', regex: rule.regex || '',
+            enabled: true, order: data.rules.length, duration: rule.duration || 5000,
+            ruleSetId: rule.ruleSetId || '', images: (rule.images || []).map(img => ({ ...img })),
+            _expanded: true,
+        });
+        saveSettings();
+        renderChatImages(); bindChatImagesEvents();
     });
 
     // === 图片引用：权重滑块 + 删除 ===

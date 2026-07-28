@@ -7,19 +7,38 @@ import { escapeHtml } from '../../shared/utils.js';
 
 /** 保存上次的图片集筛选值，在导航切换时保持不重置 */
 let _lastRulesetFilter = '';
+let _lastRuleSearchTerm = '';
+let _rulePage = 1;
+let _rulePageSize = 10;
 
 export function saveRulesetFilter() {
     const $el = $('#mc-ci-ruleset-filter');
     if ($el.length) _lastRulesetFilter = $el.val() || '';
 }
 
+export function triggerRuleSearch() {
+    _lastRuleSearchTerm = ($('#mc-ci-rule-search').val() || '').trim().toLowerCase();
+    _rulePage = 1;
+}
+
+export function triggerRuleSearchClear() {
+    _lastRuleSearchTerm = '';
+    _rulePage = 1;
+    $('#mc-ci-rule-search').val('');
+}
+
+export function getRulePage() { return _rulePage; }
+export function setRulePage(page) { _rulePage = Math.max(1, page); }
+export function setRulePageSize(size) { _rulePageSize = size; if (_rulePage > 1) _rulePage = 1; }
+
 export async function renderRules() {
     const data = getChatImagesData();
     let rules = data.rules || [];
     const ruleSets = getRuleSets();
     const selectedSet = _lastRulesetFilter || $('#mc-ci-ruleset-filter').val() || '';
-    const searchTerm = ($('#mc-ci-rule-search').val() || '').trim().toLowerCase();
+    const searchTerm = _lastRuleSearchTerm;
     const sortBy = $('#mc-ci-rule-sort').val() || 'order';
+    const pageSize = _rulePageSize;
 
     // 预解析所有图片 URL（getImageUrlByRegistry 是异步的）
     const urlCache = {};
@@ -28,7 +47,12 @@ export async function renderRules() {
     await Promise.all([...allRegIds].map(async id => { urlCache[id] = await getImageUrlByRegistry(id); }));
 
     if (selectedSet) {
-        rules = selectedSet === '__unbound' ? rules.filter(r => !r.ruleSetId) : rules.filter(r => r.ruleSetId === selectedSet);
+        if (selectedSet === '__unbound') {
+            const validRsIds = new Set(ruleSets.map(rs => rs.id));
+            rules = rules.filter(r => !r.ruleSetId || !validRsIds.has(r.ruleSetId));
+        } else {
+            rules = rules.filter(r => r.ruleSetId === selectedSet);
+        }
     }
     if (searchTerm) {
         rules = rules.filter(r => r.name.toLowerCase().includes(searchTerm) || (r.regex || '').toLowerCase().includes(searchTerm));
@@ -37,6 +61,13 @@ export async function renderRules() {
     else if (sortBy === 'name_desc') rules.sort((a, b) => b.name.localeCompare(a.name));
     else if (sortBy === 'order_desc') rules.sort((a, b) => (b.order || 0) - (a.order || 0));
     else rules.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    // 分页
+    const totalRules = rules.length;
+    const totalRulePages = Math.max(1, Math.ceil(totalRules / pageSize));
+    if (_rulePage > totalRulePages) _rulePage = totalRulePages;
+    const ruleStart = (_rulePage - 1) * pageSize;
+    const pageRules = rules.slice(ruleStart, ruleStart + pageSize);
 
     let html = '<div style="font-size:0.85em;">';
 
@@ -61,6 +92,7 @@ export async function renderRules() {
     // 搜索 + 排序
     html += '<div style="display:flex;gap:4px;margin:4px 0;align-items:center;">';
     html += '<input id="mc-ci-rule-search" class="text_pole" type="text" placeholder="搜索图片..." style="flex:1;font-size:0.9em;padding:2px 6px;" value="' + escapeHtml(searchTerm) + '">';
+    html += '<button id="mc-ci-rule-search-btn" class="menu_button" style="font-size:0.82em;white-space:nowrap;"><i class="fa-solid fa-search"></i></button>';
     html += '<select id="mc-ci-rule-sort" class="text_pole" style="font-size:0.82em;width:auto;">';
     html += '<option value="order" ' + (sortBy === 'order' ? 'selected' : '') + '>顺序 ↑</option>';
     html += '<option value="name" ' + (sortBy === 'name' ? 'selected' : '') + '>名称 ↑</option>';
@@ -70,10 +102,21 @@ export async function renderRules() {
     html += '<button id="mc-ci-add-rule" class="menu_button menu_button_icon" title="添加图片"><i class="fa-solid fa-plus"></i></button>';
     html += '</div>';
 
-    if (rules.length === 0) {
+    // 分页控件（搜索栏下方，列表上方）
+    html += `<div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:6px;font-size:0.82em;">
+        <button id="mc-ci-rule-page-prev" class="menu_button" style="font-size:0.8em;white-space:nowrap;" ${_rulePage <= 1 ? 'disabled' : ''}>◀ 上一页</button>
+        <span>${_rulePage}/${totalRulePages}</span>
+        <button id="mc-ci-rule-page-next" class="menu_button" style="font-size:0.8em;white-space:nowrap;" ${_rulePage >= totalRulePages ? 'disabled' : ''}>下一页 ▶</button>
+        <span>每页</span>
+        <input id="mc-ci-rule-page-size" class="text_pole" type="number" value="${pageSize}" min="0" max="1000" style="width:55px;font-size:0.85em;text-align:center;padding:2px 4px;">
+        <span>个</span>
+        <span style="font-size:0.8em;color:var(--grey40);">共 ${totalRules} 个</span>
+    </div>`;
+
+    if (totalRules === 0) {
         html += '<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">' + (searchTerm || selectedSet ? '未找到匹配的图片' : '暂无图片，点击 + 添加') + '</div>';
     } else {
-        for (const rule of rules) {
+        for (const rule of pageRules) {
             const rs = rule.ruleSetId ? ruleSets.find(r => r.id === rule.ruleSetId) : null;
             const imgCount = (rule.images || []).length;
             const isExpanded = rule._expanded !== false;
@@ -88,6 +131,7 @@ export async function renderRules() {
                         <input type="checkbox" class="mc-ci-rule-enabled" ${rule.enabled ? 'checked' : ''}> <span>${rule.enabled ? '启用' : '禁用'}</span>
                     </label>
                     <button class="mc-ci-rule-images menu_button menu_button_icon" title="管理图片" style="font-size:0.8em;"><i class="fa-solid fa-images"></i></button>
+                    <button class="mc-ci-rule-copy menu_button menu_button_icon" title="复制图片" style="font-size:0.8em;"><i class="fa-regular fa-copy"></i></button>
                     <button class="mc-ci-rule-delete menu_button menu_button_icon" style="font-size:0.8em;color:var(--dangerColor);"><i class="fa-solid fa-trash-can"></i></button>
                 </div>
                 <div class="mc-ci-rule-collapsible" style="${isExpanded ? '' : 'display:none;'}">
@@ -99,7 +143,7 @@ export async function renderRules() {
                         <input class="mc-ci-rule-duration text_pole" type="number" value="${rule.duration || 5000}" style="width:60px;font-size:0.78em;padding:1px 2px;">
                         <span style="font-size:0.78em;color:var(--grey40);">ms</span>
                     </div>
-                    <div style="font-size:0.75em;color:var(--grey40);margin-top:2px;">${rs ? '📎 ' + escapeHtml(rs.name) : '未分组'}</div>
+                    <div style="font-size:0.75em;color:var(--grey40);margin-top:2px;">${rs ? '📎 ' + escapeHtml(rs.name) : '未绑定'}</div>
                     <div class="mc-ci-rule-images-list" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
                         ${renderRuleImages(rule, urlCache)}
                     </div>

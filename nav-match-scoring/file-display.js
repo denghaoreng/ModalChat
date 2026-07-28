@@ -15,6 +15,7 @@ const POPUP_TYPE = Object.freeze({ TEXT: 1, CONFIRM: 2, INPUT: 3, DISPLAY: 4 });
 let msCurrentPage = 1;
 let msSelectedIds = new Set();
 let msSelectAllOn = false;
+let _msSearchTerm = '';
 
 export async function renderFileDisplay() {
     const $panel = $('#mc-ms-files-panel');
@@ -38,7 +39,7 @@ export async function renderFileDisplay() {
     }
 
     // 搜索过滤
-    const searchTerm = ($('#mc-ms-search').val() || '').toLowerCase().trim();
+    const searchTerm = _msSearchTerm;
     if (searchTerm) {
         files = files.filter(f =>
             (f.displayName && f.displayName.toLowerCase().includes(searchTerm)) ||
@@ -78,7 +79,8 @@ export async function renderFileDisplay() {
 
     // 筛选行
     html += '<div style="display:flex;gap:6px;margin-bottom:4px;flex-wrap:wrap;align-items:center;font-size:0.82em;">';
-    html += `<input id="mc-ms-search" class="text_pole" type="text" placeholder="搜索文件..." value="${escapeHtml($('#mc-ms-search').val() || '')}" style="flex:1;min-width:100px;font-size:0.9em;padding:2px 6px;">`;
+    html += `<input id="mc-ms-search" class="text_pole" type="text" placeholder="搜索文件..." value="${escapeHtml(_msSearchTerm)}" style="flex:1;min-width:100px;font-size:0.9em;padding:2px 6px;">`;
+    html += '<button id="mc-ms-search-btn" class="menu_button" style="font-size:0.82em;white-space:nowrap;"><i class="fa-solid fa-search"></i></button>';
     html += `<select id="mc-ms-filter-status" class="text_pole" style="padding:2px 4px;width:auto;">
         <option value="all" ${filterStatus==='all'?'selected':''}>全部</option>
         <option value="enabled" ${filterStatus==='enabled'?'selected':''}>已启用</option>
@@ -106,20 +108,14 @@ export async function renderFileDisplay() {
         <span>${msCurrentPage}/${totalPages}</span>
         <button id="mc-ms-page-next" class="menu_button" style="font-size:0.8em;white-space:nowrap;writing-mode:horizontal-tb;" ${msCurrentPage >= totalPages ? 'disabled' : ''}>下一页 ▶</button>
         <span>每页</span>
-        <select id="mc-ms-page-size" class="text_pole" style="padding:2px 4px;width:auto;font-size:0.9em;">
-            <option value="5" ${pageSize===5?'selected':''}>5</option>
-            <option value="10" ${pageSize===10?'selected':''}>10</option>
-            <option value="20" ${pageSize===20?'selected':''}>20</option>
-            <option value="50" ${pageSize===50?'selected':''}>50</option>
-        </select>
+        <input id="mc-ms-page-size" class="text_pole" type="number" value="${pageSize}" min="0" max="1000" style="width:55px;font-size:0.85em;text-align:center;padding:2px 4px;">
         <span>个</span>
         <span style="font-size:0.8em;color:var(--grey40);">共 ${files.length} 个</span>
     </div>`;
 
     // 文件列表
     if (pageFiles.length === 0) {
-        const hasSearch = ($('#mc-ms-search').val() || '').trim();
-        html += `<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">${hasSearch ? '没有匹配的文件' : '还没有文件，点击上方"上传文件"按钮添加'}</div>`;
+        html += `<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">${_msSearchTerm ? '没有匹配的文件' : '还没有文件，点击上方"上传文件"按钮添加'}</div>`;
     } else {
         const cardWidth = data.cardWidth || 120;
         html += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(${cardWidth}px,1fr));gap:6px;">`;
@@ -313,19 +309,25 @@ export function bindFileDisplayEvents() {
     });
 
     // 筛选/排序变更
-    $(document).off('change', '#mc-ms-filter-status, #mc-ms-filter-type, #mc-ms-sort, #mc-ms-page-size').on('change', '#mc-ms-filter-status, #mc-ms-filter-type, #mc-ms-sort, #mc-ms-page-size', function () {
+    $(document).off('change', '#mc-ms-filter-status, #mc-ms-filter-type, #mc-ms-sort').on('change', '#mc-ms-filter-status, #mc-ms-filter-type, #mc-ms-sort', function () {
         msCurrentPage = 1;
         renderFileDisplay(); bindFileDisplayEvents();
     });
-
-    // 搜索输入（防抖）
-    let _searchTimer = null;
-    $(document).off('input', '#mc-ms-search').on('input', '#mc-ms-search', function () {
-        clearTimeout(_searchTimer);
-        _searchTimer = setTimeout(() => {
+    // 每页数量变更
+    $(document).off('input', '#mc-ms-page-size').on('input', '#mc-ms-page-size', function () {
+        const val = parseInt($(this).val());
+        if (!isNaN(val) && val >= 0 && val <= 1000) {
+            data.filePageSize = val || 10;
             msCurrentPage = 1;
             renderFileDisplay(); bindFileDisplayEvents();
-        }, 300);
+        }
+    });
+
+    // 搜索：点击按钮触发
+    $(document).off('click', '#mc-ms-search-btn').on('click', '#mc-ms-search-btn', function () {
+        _msSearchTerm = ($('#mc-ms-search').val() || '').toLowerCase().trim();
+        msCurrentPage = 1;
+        renderFileDisplay(); bindFileDisplayEvents();
     });
 
     // 结果展示数量变更
