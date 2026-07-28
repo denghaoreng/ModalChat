@@ -87,6 +87,7 @@ export async function renderRules() {
     html += '<button id="mc-ci-batch-edit" class="menu_button" style="font-size:0.85em;flex:1;" title="批量修改所选规则集的所有规则"><i class="fa-solid fa-pen-to-square"></i> 批量改</button>';
     html += '<button id="mc-ci-expand-all" class="menu_button menu_button_icon" title="展开全部" style="font-size:0.85em;"><i class="fa-solid fa-chevron-down"></i></button>';
     html += '<button id="mc-ci-collapse-all" class="menu_button menu_button_icon" title="折叠全部" style="font-size:0.85em;"><i class="fa-solid fa-chevron-right"></i></button>';
+    html += '<button id="mc-ci-regex-help" class="menu_button menu_button_icon" title="正则表达式手册" style="font-size:0.85em;"><i class="fa-solid fa-book"></i></button>';
     html += '</div>';
 
     // 搜索 + 排序

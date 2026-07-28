@@ -324,6 +324,11 @@ export function bindChatImagesEvents() {
         for (const r of data.rules || []) r._expanded = false;
         saveSettings(); renderChatImages(); bindChatImagesEvents();
     });
+    // 正则手册
+    $(document).off('click', '#mc-ci-regex-help').on('click', '#mc-ci-regex-help', async function () {
+        const { showRegexHelp } = await import('../popup/regex-help.js');
+        showRegexHelp();
+    });
     // 添加规则（绑定到选中的规则集）
     $(document).off('click', '#mc-ci-add-rule').on('click', '#mc-ci-add-rule', function () {
         const setId = $('#mc-ci-ruleset-filter').val() || '';
