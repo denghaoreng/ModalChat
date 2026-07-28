@@ -4,36 +4,50 @@ import { getMatchScoringData, saveSettings, getAnimationTypes } from '../core/da
 import { escapeHtml } from '../shared/utils.js';
 
 function defaultSlots() {
-    return [{ types: ['image', 'video', 'audio'], count: 3, imageDuration: 5, minScore: 0, totalDuration: 200, animationType: '果冻弹性', animationDuration: 0.9, clickAction: 'enlarge' }];
+    return [{ enabled: true, types: ['image', 'video', 'audio'], count: 3, imageDuration: 5, minScore: 0, totalDuration: 200, animationType: '果冻弹性', animationDuration: 0.9, clickAction: 'enlarge' }];
+}
+
+/** 保存每个插位的折叠状态 */
+let _collapsedSlots = new Set();
+
+function saveCollapsedState() {
+    _collapsedSlots = new Set();
+    $('.mc-carousel-slot').each(function () {
+        const idx = $(this).data('slot');
+        const $body = $(`.mc-carousel-slot-body[data-slot="${idx}"]`);
+        if ($body.length && $body.is(':hidden')) _collapsedSlots.add(idx);
+    });
 }
 
 export function renderCarouselConfig() {
     const $panel = $('#mc-ms-carousel-panel');
     if (!$panel.length) return;
 
+    saveCollapsedState();
+
     const data = getMatchScoringData();
     const slots = data.slots || defaultSlots();
 
     $panel.html(`
     <div style="padding:6px;font-size:0.82em;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;border-bottom:1px solid var(--borderColor);padding-bottom:6px;">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;border-bottom:1px solid var(--borderColor);padding-bottom:6px;">
             <span style="font-weight:bold;font-size:0.95em;"><i class="fa-solid fa-layer-group"></i> 轮播配置</span>
             <span style="flex:1;"></span>
             <button id="mc-carousel-add" class="menu_button" style="font-size:0.8em;white-space:nowrap;"><i class="fa-solid fa-plus"></i> 添加插位</button>
             <button id="mc-carousel-remove" class="menu_button" style="font-size:0.8em;white-space:nowrap;color:var(--dangerColor);"><i class="fa-solid fa-minus"></i> 移除末尾</button>
         </div>
-        <div style="display:flex;gap:20px;align-items:center;margin-bottom:10px;padding:8px;border:1px solid var(--borderColor);border-radius:6px;background:var(--white10);">
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:0.85em;font-weight:500;color:var(--grey40);">播放最近</span>
-                <input id="mc-carousel-play" class="text_pole" type="number" value="${data.carouselPlayCount ?? 1}" min="0" max="999" style="width:55px;font-size:0.88em;text-align:center;padding:3px 6px;">
-                <span style="font-size:0.85em;color:var(--grey40);">层的轮播</span>
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:10px;padding:6px 10px;border:1px solid var(--borderColor);border-radius:6px;background:var(--white10);flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:4px;">
+                <span style="font-size:0.85em;color:var(--grey40);">播放最近</span>
+                <input id="mc-carousel-play" class="text_pole" type="number" value="${data.carouselPlayCount ?? 1}" min="0" max="999" style="width:50px;font-size:0.88em;text-align:center;padding:2px 4px;">
+                <span style="font-size:0.85em;color:var(--grey40);">层</span>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-                <span style="font-size:0.85em;font-weight:500;color:var(--grey40);">展示最近</span>
-                <input id="mc-carousel-show" class="text_pole" type="number" value="${data.carouselShowCount ?? 1}" min="0" max="999" style="width:55px;font-size:0.88em;text-align:center;padding:3px 6px;">
-                <span style="font-size:0.85em;color:var(--grey40);">层的轮播</span>
+            <div style="display:flex;align-items:center;gap:4px;">
+                <span style="font-size:0.85em;color:var(--grey40);">展示最近</span>
+                <input id="mc-carousel-show" class="text_pole" type="number" value="${data.carouselShowCount ?? 1}" min="0" max="999" style="width:50px;font-size:0.88em;text-align:center;padding:2px 4px;">
+                <span style="font-size:0.85em;color:var(--grey40);">层</span>
             </div>
-            <span style="font-size:0.75em;color:var(--grey40);">播放 ≤ 展示，至少展示才能播放</span>
+            <span style="font-size:0.75em;color:var(--grey40);">播放 ≤ 展示</span>
         </div>
         <div id="mc-carousel-slots">
             ${renderSlots(slots)}
@@ -46,76 +60,76 @@ function renderSlots(slots) {
     if (!slots || slots.length === 0) return '';
     const typeLabels = { image: '🖼️ 图片', video: '🎬 视频', audio: '🎵 音频', hybrid: '🔀 图音混合' };
     return slots.map((slot, idx) => `
-        <div class="mc-carousel-slot" data-slot="${idx}" style="margin-bottom:8px;padding:10px;border:1px solid var(--borderColor);border-radius:6px;background:var(--white10);">
-            <div style="font-weight:bold;font-size:0.9em;margin-bottom:8px;border-bottom:1px solid var(--borderColor);padding-bottom:4px;">
-                ${idx + 1}号插位
-                <span style="font-weight:normal;font-size:0.78em;color:var(--grey40);margin-left:6px;">${slot.count ?? 3} 个文件 · ${slot.imageDuration ?? 5} 秒/图片 · ≥${slot.minScore ?? 0} 分</span>
-            </div>            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);font-weight:500;">总时长</span>
-                    <input class="mc-carousel-totaldur text_pole" data-slot="${idx}" type="number" value="${slot.totalDuration ?? 200}" min="1" max="3600" style="width:65px;font-size:0.9em;text-align:center;padding:3px 6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);">秒后停止轮播</span>
-                </div>
-            </div>            <div style="margin-bottom:8px;">
-                <div style="font-size:0.85em;color:var(--grey40);margin-bottom:6px;">允许的媒体类型</div>
-                <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <div class="mc-carousel-slot" data-slot="${idx}" style="margin-bottom:6px;padding:8px 10px;border:1px solid var(--borderColor);border-radius:6px;background:var(--white10);${slot.enabled === false ? 'opacity:0.5;' : ''}">
+            <div style="font-weight:bold;font-size:0.88em;margin-bottom:6px;border-bottom:1px solid var(--borderColor);padding-bottom:4px;display:flex;align-items:center;gap:6px;">
+                <button class="mc-carousel-enabled" data-slot="${idx}" style="font-size:0.8em;cursor:pointer;background:none;border:none;padding:0;color:${slot.enabled === false ? 'var(--grey40)' : 'var(--primary)'}">
+                    <i class="fa-solid ${slot.enabled === false ? 'fa-toggle-off' : 'fa-toggle-on'}"></i>
+                </button>
+                <span>${idx + 1}号插位</span>
+                <span style="font-weight:normal;font-size:0.78em;color:var(--grey40);">${slot.count ?? 3} 个文件 · ${slot.imageDuration ?? 5} 秒/图 · ≥${slot.minScore ?? 0} 分</span>
+                <span style="flex:1;"></span>
+                <span class="mc-carousel-collapse-btn" data-slot="${idx}" style="cursor:pointer;font-size:0.85em;color:var(--grey40);"><i class="fa-solid ${_collapsedSlots.has(idx) ? 'fa-chevron-down' : 'fa-chevron-up'}"></i></span>
+            </div>
+            <div class="mc-carousel-slot-body" data-slot="${idx}" style="${_collapsedSlots.has(idx) ? 'display:none;' : ''}">
+            <div style="margin-bottom:6px;">
+                <div style="font-size:0.85em;color:var(--grey40);margin-bottom:4px;">媒体类型</div>
+                <div style="display:flex;gap:6px;flex-wrap:wrap;">
                     ${['image', 'video', 'audio', 'hybrid'].map(t => `
-                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.9em;cursor:pointer;padding:6px 14px;border:1px solid ${(slot.types || []).includes(t) ? 'var(--primary)' : 'var(--borderColor)'};border-radius:6px;background:${(slot.types || []).includes(t) ? 'rgba(var(--primary-rgb),0.1)' : 'transparent'};">
-                            <input type="checkbox" class="mc-carousel-type" data-slot="${idx}" value="${t}" ${(slot.types || []).includes(t) ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--primary);">
+                        <label style="display:inline-flex;align-items:center;gap:4px;font-size:0.85em;cursor:pointer;padding:4px 10px;border:1px solid ${(slot.types || []).includes(t) ? 'var(--primary)' : 'var(--borderColor)'};border-radius:4px;background:${(slot.types || []).includes(t) ? 'rgba(var(--primary-rgb),0.08)' : 'transparent'};">
+                            <input type="checkbox" class="mc-carousel-type" data-slot="${idx}" value="${t}" ${(slot.types || []).includes(t) ? 'checked' : ''} style="width:14px;height:14px;accent-color:var(--primary);margin:0;">
                             ${typeLabels[t]}
                         </label>
                     `).join('')}
                 </div>
             </div>
-            <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);font-weight:500;">展示前</span>
-                    <input class="mc-carousel-count text_pole" data-slot="${idx}" type="number" value="${slot.count ?? 3}" min="1" max="20" style="width:55px;font-size:0.9em;text-align:center;padding:3px 6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);">个</span>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">总时长</span>
+                    <input class="mc-carousel-totaldur text_pole" data-slot="${idx}" type="number" value="${slot.totalDuration ?? 200}" min="1" max="3600" style="width:55px;font-size:0.85em;text-align:center;padding:2px 4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">秒</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);font-weight:500;">图片展示</span>
-                    <input class="mc-carousel-imgdur text_pole" data-slot="${idx}" type="number" value="${slot.imageDuration ?? 5}" min="1" max="60" style="width:55px;font-size:0.9em;text-align:center;padding:3px 6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);">秒</span>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">展示前</span>
+                    <input class="mc-carousel-count text_pole" data-slot="${idx}" type="number" value="${slot.count ?? 3}" min="1" max="20" style="width:45px;font-size:0.85em;text-align:center;padding:2px 4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">个</span>
                 </div>
-                <div style="display:flex;align-items:center;gap:6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);font-weight:500;">最低</span>
-                    <input class="mc-carousel-minscore text_pole" data-slot="${idx}" type="number" value="${slot.minScore ?? 0}" min="0" step="0.1" style="width:65px;font-size:0.9em;text-align:center;padding:3px 6px;">
-                    <span style="font-size:0.88em;color:var(--grey40);">分</span>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">图片</span>
+                    <input class="mc-carousel-imgdur text_pole" data-slot="${idx}" type="number" value="${slot.imageDuration ?? 5}" min="1" max="60" style="width:45px;font-size:0.85em;text-align:center;padding:2px 4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">秒</span>
                 </div>
-            </div>
-            <div style="margin-bottom:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--borderColor);">
-                <div style="font-size:0.85em;color:var(--grey40);margin-bottom:6px;">出现动画</div>
-                <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <select class="mc-carousel-animtype text_pole" data-slot="${idx}" style="font-size:0.9em;padding:3px 6px;">
-                            <option value="random" ${slot.animationType === 'random' ? 'selected' : ''}>🎲 随机</option>
-                            ${(getAnimationTypes() || []).map(t =>
-                                `<option value="${t.name}" ${(slot.animationType || '果冻弹性') === t.name ? 'selected' : ''}>${t.name}</option>`
-                            ).join('')}
-                            <option value="" ${!slot.animationType ? 'selected' : ''}>无</option>
-                        </select>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <span style="font-size:0.88em;color:var(--grey40);">动画时长</span>
-                        <input class="mc-carousel-animdur text_pole" data-slot="${idx}" type="number" value="${slot.animationDuration ?? 0.9}" min="0" max="10" step="0.1" style="width:60px;font-size:0.9em;text-align:center;padding:3px 6px;">
-                        <span style="font-size:0.88em;color:var(--grey40);">秒</span>
-                    </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">最低分</span>
+                    <input class="mc-carousel-minscore text_pole" data-slot="${idx}" type="number" value="${slot.minScore ?? 0}" min="0" step="0.1" style="width:55px;font-size:0.85em;text-align:center;padding:2px 4px;">
                 </div>
             </div>
-            <div style="margin-bottom:6px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--borderColor);">
-                <div style="font-size:0.85em;color:var(--grey40);margin-bottom:6px;">点击交互</div>
-                <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap;">
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <select class="mc-carousel-clickaction text_pole" data-slot="${idx}" style="font-size:0.9em;padding:3px 6px;">
-                            <option value="enlarge" ${(slot.clickAction || 'enlarge') === 'enlarge' ? 'selected' : ''}>🖼️ 点击放大</option>
-                            <option value="interact" ${slot.clickAction === 'interact' ? 'selected' : ''}>👆 分区抖动</option>
-                            <option value="both" ${slot.clickAction === 'both' ? 'selected' : ''}>🔄 抖动后放大</option>
-                        </select>
-                    </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:6px;border-top:1px dashed var(--borderColor);">
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">动画</span>
+                    <select class="mc-carousel-animtype text_pole" data-slot="${idx}" style="font-size:0.85em;padding:2px 4px;">
+                        <option value="random" ${slot.animationType === 'random' ? 'selected' : ''}>🎲 随机</option>
+                        ${(getAnimationTypes() || []).map(t =>
+                            `<option value="${t.name}" ${(slot.animationType || '果冻弹性') === t.name ? 'selected' : ''}>${t.name}</option>`
+                        ).join('')}
+                        <option value="" ${!slot.animationType ? 'selected' : ''}>无</option>
+                    </select>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">时长</span>
+                    <input class="mc-carousel-animdur text_pole" data-slot="${idx}" type="number" value="${slot.animationDuration ?? 0.9}" min="0" max="10" step="0.1" style="width:50px;font-size:0.85em;text-align:center;padding:2px 4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">秒</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:4px;">
+                    <span style="font-size:0.85em;color:var(--grey40);">点击</span>
+                    <select class="mc-carousel-clickaction text_pole" data-slot="${idx}" style="font-size:0.85em;padding:2px 4px;">
+                        <option value="enlarge" ${(slot.clickAction || 'enlarge') === 'enlarge' ? 'selected' : ''}>放大</option>
+                        <option value="interact" ${slot.clickAction === 'interact' ? 'selected' : ''}>分区抖动</option>
+                        <option value="both" ${slot.clickAction === 'both' ? 'selected' : ''}>抖动后放大</option>
+                    </select>
                 </div>
             </div>
         </div>
+    </div>
     `).join('');
 }
 
@@ -128,9 +142,21 @@ export function bindCarouselEvents() {
         bindCarouselEvents();
     }
 
+    $(document).off('click', '.mc-carousel-collapse-btn').on('click', '.mc-carousel-collapse-btn', function () {
+        const idx = $(this).data('slot');
+        const $body = $(`.mc-carousel-slot-body[data-slot="${idx}"]`);
+        const $icon = $(this).find('i');
+        $body.toggle();
+        $icon.toggleClass('fa-chevron-up fa-chevron-down');
+    });
+    $(document).off('click', '.mc-carousel-enabled').on('click', '.mc-carousel-enabled', function () {
+        const idx = parseInt($(this).data('slot'));
+        const slots = getSlots();
+        if (slots[idx]) { slots[idx].enabled = slots[idx].enabled === false ? true : false; saveSlots(slots); }
+    });
     $(document).off('click', '#mc-carousel-add').on('click', '#mc-carousel-add', function () {
         const slots = getSlots();
-        slots.push({ types: ['image', 'video', 'audio'], count: 3, imageDuration: 5, minScore: 0, totalDuration: 200, animationType: '果冻弹性', animationDuration: 0.9, clickAction: 'enlarge' });
+        slots.push({ enabled: true, types: ['image', 'video', 'audio'], count: 3, imageDuration: 5, minScore: 0, totalDuration: 200, animationType: '果冻弹性', animationDuration: 0.9, clickAction: 'enlarge' });
         saveSlots(slots);
     });
     $(document).off('click', '#mc-carousel-remove').on('click', '#mc-carousel-remove', function () {

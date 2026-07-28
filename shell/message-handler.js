@@ -48,7 +48,16 @@ function onMessageReceived(data) {
     const msData = currentSettings.navMatchScoring || {};
     const ciEnabled = ciData.enabled !== false && ciData.autoDetect !== false;
     const msEnabled = msData.enabled !== false && msData.autoDetect !== false;
-    if (!ciEnabled && !msEnabled) return;
+
+    // 插槽全部关闭时停止对应模块的计算
+    const ciSlots = ciData.slots;
+    const msSlots = msData.slots;
+    const ciAnySlotOn = !ciSlots || ciSlots.length === 0 || ciSlots.some(s => s.enabled !== false);
+    const msAnySlotOn = !msSlots || msSlots.length === 0 || msSlots.some(s => s.enabled !== false);
+    const ciFinal = ciEnabled && ciAnySlotOn;
+    const msFinal = msEnabled && msAnySlotOn;
+
+    if (!ciFinal && !msFinal) return;
 
     const { chat } = getContext();
     if (typeof data === 'object' && data?.is_user) return;
@@ -75,13 +84,21 @@ function onMessageReceived(data) {
 
     pendingGeneration++;
 
-    // chat-images 匹配（异步执行，matcher 内部处理队列）
-    if (ciEnabled) {
-        import('../nav-chat-images/matcher/engine.js').then(m => m.performMatch(aiText)).catch(() => {});
+    // chat-images 匹配 → 轮播渲染
+    if (ciFinal) {
+        import('../nav-chat-images/matcher/engine.js').then(async m => {
+            const items = await m.performMatch(aiText);
+            if (!items || items.length === 0) return;
+            const carousel = await import('../nav-chat-images/carousel/index.js');
+            const domId = mesIndex != null ? mesIndex : messageId;
+            carousel.renderCIResults(domId, items);
+            carousel.persistCIResults(messageId, items);
+            saveChatDebounced();
+        }).catch(() => {});
     }
 
     // match-scoring 评分
-    if (msEnabled) {
+    if (msFinal) {
         import('../nav-match-scoring/scorer.js').then(async m => {
             const results = m.scoreMessages(aiText, userText);
             m.setLastResults(results, aiText, userText);
@@ -158,6 +175,12 @@ function onMessageSwiped() {
     //    防止旧队列定时器在异步匹配期间到期插入旧图片
     import('../nav-chat-images/matcher/queue.js').then(m => m.cancelPendingMatch(lastAiIndex)).catch(() => {});
 
+    // 清除旧的聊天图片结果 DOM
+    $(`.mes[mesid="${lastAiIndex}"] .mc-ci-chat-results`).remove();
+    import('../nav-chat-images/carousel/index.js').then(cr => {
+        $(`.mes[mesid="${lastAiIndex}"] .mc-ci-chat-results`).remove();
+    }).catch(() => {});
+
     if (isNew) {
         // ⭐ 文本变化：重新匹配（新生成或不同缓存回复）
         onMessageReceived({ id: lastMsg.id, is_user: lastMsg.is_user });
@@ -173,10 +196,14 @@ function onChatChanged() {
         cr.cleanupAllChatResults();
     }).catch(() => {});
     import('../nav-chat-images/matcher/queue.js').then(m => m.clearAllImageTimers()).catch(() => {});
+    $('.mc-ci-chat-results').remove();
 }
 
 function onChatLoaded() {
     try { restoreChatResults(); } catch (e) { /* ignore */ }
+    try {
+        import('../nav-chat-images/carousel/index.js').then(cr => cr.restoreCIResults()).catch(() => {});
+    } catch (e) { /* ignore */ }
 }
 
 function onMessageDeleted() {

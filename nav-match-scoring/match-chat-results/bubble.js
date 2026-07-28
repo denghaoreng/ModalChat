@@ -28,7 +28,9 @@ export async function renderChatResults(messageId, results) {
 
             let allHtml = '';
             for (let si = 0; si < slots.length; si++) {
-                const slotHtml = buildSlotHtml(results, slots[si], autoPlay, si);
+                const slot = slots[si];
+                if (slot.enabled === false) continue; // 跳过关闭的插位
+                const slotHtml = buildSlotHtml(results, slot, autoPlay, si);
                 if (slotHtml) allHtml += slotHtml;
             }
             if (!allHtml) return;

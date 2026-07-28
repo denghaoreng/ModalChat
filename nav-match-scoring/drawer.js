@@ -33,17 +33,18 @@ export function renderMatchScoring() {
             </div>
             <div id="mc-ms-content">
                 <div id="mc-ms-files-panel">
-                    <div id="mc-ms-results-panel" style="margin-top:8px;border-top:1px solid var(--borderColor);padding-top:8px;">
-                        <div class="flex-container alignitemscenter" style="justify-content:space-between;">
-                            <div style="font-weight:bold;font-size:0.85em;"><i class="fa-solid fa-trophy"></i> 当前匹配结果</div>
-                            <div class="flex-container alignitemscenter" style="gap:4px;">
-                                <span style="font-size:0.78em;color:var(--grey40);">每种</span>
-                                <input id="mc-ms-results-limit" class="text_pole" type="number" value="${data.resultsDisplayLimit ?? 10}" min="1" max="999" style="width:45px;font-size:0.78em;padding:2px 4px;">
-                                <span style="font-size:0.78em;color:var(--grey40);">个</span>
-                            </div>
+                    ${''/* renderFileDisplay() 会填充此面板 */}
+                </div>
+                <div id="mc-ms-results-panel" style="margin-top:8px;border-top:1px solid var(--borderColor);padding-top:8px;">
+                    <div class="flex-container alignitemscenter" style="justify-content:space-between;">
+                        <div style="font-weight:bold;font-size:0.85em;"><i class="fa-solid fa-trophy"></i> 当前匹配结果</div>
+                        <div class="flex-container alignitemscenter" style="gap:4px;">
+                            <span style="font-size:0.78em;color:var(--grey40);">每种</span>
+                            <input id="mc-ms-results-limit" class="text_pole" type="number" value="${data.resultsDisplayLimit ?? 10}" min="1" max="999" style="width:45px;font-size:0.78em;padding:2px 4px;">
+                            <span style="font-size:0.78em;color:var(--grey40);">个</span>
                         </div>
-                        <div id="mc-ms-results-list" style="margin-top:4px;"></div>
                     </div>
+                    <div id="mc-ms-results-list" style="margin-top:4px;"></div>
                 </div>
                 <div id="mc-ms-config-panel" style="display:none;"></div>
                 <div id="mc-ms-carousel-panel" style="display:none;"></div>
@@ -80,8 +81,9 @@ function switchSubTab(tab) {
         }
     });
     // 切换内容面板
-    $('#mc-ms-files-panel, #mc-ms-config-panel, #mc-ms-carousel-panel').hide();
+    $('#mc-ms-files-panel, #mc-ms-results-panel, #mc-ms-config-panel, #mc-ms-carousel-panel').hide();
     $(`#mc-ms-${tab}-panel`).show();
+    if (tab === 'files') $('#mc-ms-results-panel').show();
 }
 
 export function bindMatchScoringEvents() {

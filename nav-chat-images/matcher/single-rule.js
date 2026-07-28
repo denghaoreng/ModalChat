@@ -37,7 +37,7 @@ export async function matchSingleRule(rule, text) {
                 registryId: selected.registryId,
                 name: selected.registry?.displayName || '图片',
                 filename: selected.registry?.serverFilename || '',
-                url: getFileUrl(selected.registry),
+                url: await getFileUrl(selected.registry),
             },
             ruleId: rule.id,
             order: rule.order ?? 0,

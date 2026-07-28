@@ -80,7 +80,7 @@ export function queueBatchesForMessage(messageId, batches) {
             const imageHtml = `
         <div class="mes_media_container mes_img_container chat-image-queued" data-index="${Date.now()}" data-rule-id="${item.ruleId || ''}">
             <div class="chat-image-frame" style="max-width:100%;background:rgba(${bgRgb},${bgOpacity});">
-                <img class="mes_img" src="${imgUrl}" width="${imgW}" height="${imgH}" style="max-width:100%;max-height:100%;width:${imgW}px;height:${imgH}px;object-fit:contain;" alt="${escapeHtml(item.image.name || '聊天图片')}" title="${escapeHtml(item.image.name || '聊天图片')}" onerror="chatImagesCleanupStaleImage(this)">
+                <img class="mes_img" src="${imgUrl}" width="${imgW}" height="${imgH}" style="max-width:100%;max-height:100%;width:${imgW}px;height:${imgH}px;object-fit:contain;" alt="${escapeHtml(item.image.name || '聊天图片')}" title="${escapeHtml(item.image.name || '聊天图片')}" onerror="this.closest('.chat-image-queued')?.remove()">
             </div>
         </div>`;
             const mesText = messageEl.find('.mes_text');
