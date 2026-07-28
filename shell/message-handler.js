@@ -159,24 +159,25 @@ function onMessageSwiped() {
     const lastMsg = chat[chat.length - 1];
     if (!lastMsg || lastMsg.is_user) return;
 
-    // ⭐ 清除旧的 pending 状态和 DOM 结果
     const lastAiIndex = chat.length - 1;
-    pendingResults = null;
-    $(`.mes[mesid="${lastAiIndex}"] .mc-ms-chat-results`).remove();
-    import('../nav-match-scoring/scorer.js').then(m => m.clearLastResults()).catch(() => {});
-    import('../nav-match-scoring/match-chat-results.js').then(cr => cr.renderResultsPanel(null)).catch(() => {});
-
     const mesIndex = chat.indexOf(lastMsg);
     const currentText = lastMsg.mes || '';
     const prevText = window._mc_lastMesText?.[mesIndex];
     const isNew = currentText !== prevText;
+
+    // ⭐ 清除旧的 pending 状态和 DOM 结果
+    pendingResults = null;
+    $(`.mes[mesid="${lastAiIndex}"] .mc-ms-chat-results`).remove();
+    $(`.mes[mesid="${lastAiIndex}"] .mc-ci-chat-results`).remove();
+
+    import('../nav-match-scoring/scorer.js').then(m => m.clearLastResults()).catch(() => {});
+    import('../nav-match-scoring/match-chat-results.js').then(cr => cr.renderResultsPanel(null)).catch(() => {});
 
     // ⭐ 清除 chat-images 的待执行定时器 + 递增 generation
     //    防止旧队列定时器在异步匹配期间到期插入旧图片
     import('../nav-chat-images/matcher/queue.js').then(m => m.cancelPendingMatch(lastAiIndex)).catch(() => {});
 
     // 清除旧的聊天图片结果 DOM
-    $(`.mes[mesid="${lastAiIndex}"] .mc-ci-chat-results`).remove();
     import('../nav-chat-images/carousel/index.js').then(cr => {
         $(`.mes[mesid="${lastAiIndex}"] .mc-ci-chat-results`).remove();
     }).catch(() => {});
@@ -203,6 +204,16 @@ function onChatLoaded() {
     try { restoreChatResults(); } catch (e) { /* ignore */ }
     try {
         import('../nav-chat-images/carousel/index.js').then(cr => cr.restoreCIResults()).catch(() => {});
+    } catch (e) { /* ignore */ }
+
+    // ⭐ 缓存已恢复消息的文本，避免首次滑动时 prevText=null → isNew=true → 不必要的重新匹配
+    try {
+        const { chat } = getContext();
+        for (let i = 0; i < chat.length; i++) {
+            const msg = chat[i];
+            if (!msg || msg.is_user || msg.is_system) continue;
+            window._mc_lastMesText[i] = msg.mes || '';
+        }
     } catch (e) { /* ignore */ }
 }
 

@@ -36,7 +36,6 @@ export function restoreCIResults() {
             if (!has) continue;
             pending.push({ index: i, items: msg.extra.chatImagesResults });
         }
-
         // 分批渲染
         const BATCH_SIZE = 3;
         let idx = 0;
