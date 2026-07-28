@@ -1,4 +1,4 @@
-// ui/rule-sets.js — 图片集列表渲染（含角色集绑定 + 搜索 + 排序 + 内联编辑）
+// ui/rule-sets.js — 规则集列表渲染（含角色集绑定 + 搜索 + 排序 + 内联编辑）
 
 import { getChatImagesData } from '../../core/data.js';
 import { getCharSets } from '../domain/char-sets.js';
@@ -69,7 +69,7 @@ export function renderRuleSets() {
     html += `<select id="mc-ci-rs-charselect" class="text_pole" style="width:90%;font-size:0.9em;">${charOpts}</select>`;
     html += '</div>';
     html += '<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center;">';
-    html += '<input id="mc-ci-rs-search" class="text_pole" type="text" placeholder="搜索图片集..." style="flex:1;font-size:0.9em;padding:2px 6px;" value="' + escapeHtml(searchTerm) + '">';
+    html += '<input id="mc-ci-rs-search" class="text_pole" type="text" placeholder="搜索规则集..." style="flex:1;font-size:0.9em;padding:2px 6px;" value="' + escapeHtml(searchTerm) + '">';
     html += '<select id="mc-ci-rs-sort" class="text_pole" style="font-size:0.82em;width:auto;">';
     html += '<option value="order" ' + (sortBy === 'order' ? 'selected' : '') + '>顺序 ↑</option>';
     html += '<option value="name" ' + (sortBy === 'name' ? 'selected' : '') + '>名称 ↑</option>';
@@ -88,7 +88,7 @@ export function renderRuleSets() {
         <span style="font-size:0.8em;color:var(--grey40);">共 ${totalItems} 个</span>
     </div>`;
     if (totalItems === 0) {
-        html += '<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">' + (searchTerm || selectedChar ? '未找到匹配的图片集' : '暂无图片集，点击 + 添加') + '</div>';
+        html += '<div style="padding:20px;text-align:center;color:var(--grey40);font-size:0.85em;">' + (searchTerm || selectedChar ? '未找到匹配的规则集' : '暂无规则集，点击 + 添加') + '</div>';
     } else {
         for (const rs of pageItems) {
             const boundChar = rs.charSetId ? charSets.find(c => c.id === rs.charSetId) : null;
@@ -103,7 +103,7 @@ export function renderRuleSets() {
                 </label>
                 <span style="font-size:0.75em;color:var(--grey40);">🖼️ ${rulesCount}</span>
                 <button class="mc-ci-rs-jump menu_button menu_button_icon" title="查看图片" style="font-size:0.8em;"><i class="fa-solid fa-list"></i></button>
-                <button class="mc-ci-rs-copy menu_button menu_button_icon" title="复制图片集" style="font-size:0.8em;"><i class="fa-regular fa-copy"></i></button>
+                <button class="mc-ci-rs-copy menu_button menu_button_icon" title="复制规则集" style="font-size:0.8em;"><i class="fa-regular fa-copy"></i></button>
                 <button class="mc-ci-rs-delete menu_button menu_button_icon" style="font-size:0.8em;color:var(--dangerColor);"><i class="fa-solid fa-trash-can"></i></button>
             </div>`;
         }

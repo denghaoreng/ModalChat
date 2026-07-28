@@ -5,7 +5,7 @@ import { getRuleSets } from '../domain/rule-sets.js';
 import { getImageUrlByRegistry } from '../domain/helpers.js';
 import { escapeHtml } from '../../shared/utils.js';
 
-/** 保存上次的图片集筛选值，在导航切换时保持不重置 */
+/** 保存上次的规则集筛选值，在导航切换时保持不重置 */
 let _lastRulesetFilter = '';
 let _lastRuleSearchTerm = '';
 let _rulePage = 1;
@@ -84,7 +84,7 @@ export async function renderRules() {
     // 批量操作 + 展开折叠
     html += '<div style="display:flex;gap:4px;margin:2px 0;justify-content:center;">';
     html += '<button id="mc-ci-batch-add" class="menu_button" style="font-size:0.85em;flex:1;"><i class="fa-solid fa-layer-group"></i> 批量增</button>';
-    html += '<button id="mc-ci-batch-edit" class="menu_button" style="font-size:0.85em;flex:1;" title="批量修改所选图片集的所有图片"><i class="fa-solid fa-pen-to-square"></i> 批量改</button>';
+    html += '<button id="mc-ci-batch-edit" class="menu_button" style="font-size:0.85em;flex:1;" title="批量修改所选规则集的所有规则"><i class="fa-solid fa-pen-to-square"></i> 批量改</button>';
     html += '<button id="mc-ci-expand-all" class="menu_button menu_button_icon" title="展开全部" style="font-size:0.85em;"><i class="fa-solid fa-chevron-down"></i></button>';
     html += '<button id="mc-ci-collapse-all" class="menu_button menu_button_icon" title="折叠全部" style="font-size:0.85em;"><i class="fa-solid fa-chevron-right"></i></button>';
     html += '</div>';
@@ -99,7 +99,7 @@ export async function renderRules() {
     html += '<option value="order_desc" ' + (sortBy === 'order_desc' ? 'selected' : '') + '>顺序 ↓</option>';
     html += '<option value="name_desc" ' + (sortBy === 'name_desc' ? 'selected' : '') + '>名称 ↓</option>';
     html += '</select>';
-    html += '<button id="mc-ci-add-rule" class="menu_button menu_button_icon" title="添加图片"><i class="fa-solid fa-plus"></i></button>';
+    html += '<button id="mc-ci-add-rule" class="menu_button menu_button_icon" title="添加规则"><i class="fa-solid fa-plus"></i></button>'
     html += '</div>';
 
     // 分页控件（搜索栏下方，列表上方）

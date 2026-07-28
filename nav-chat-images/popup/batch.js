@@ -13,7 +13,7 @@ import { escapeHtml } from '../../shared/utils.js';
 export async function showBatchAddPopup() {
     const setId = $('#mc-ci-ruleset-filter').val();
     if (!setId || setId === '__unbound') {
-        toastr.warning('请先选择一个图片集');
+        toastr.warning('请先选择一个规则集');
         return;
     }
 
@@ -48,22 +48,22 @@ export async function showBatchAddPopup() {
 }
 
 /**
- * 批量修改：修改指定图片集下所有图片的时长和正则内容
+ * 批量修改：修改指定规则集下所有规则的时长和正则内容
  */
 export async function showBatchEditPopup() {
     const setId = $('#mc-ci-ruleset-filter').val();
     if (!setId || setId === '__unbound' || !setId) {
-        toastr.warning('请先选择一个图片集');
+        toastr.warning('请先选择一个规则集');
         return;
     }
 
     const rulesData = getRulesData();
     const rules = rulesData.rules.filter(r => r.ruleSetId === setId);
     const ruleSet = rulesData.ruleSets.find(rs => rs.id === setId);
-    const setName = ruleSet ? ruleSet.name : '未命名图片集';
+    const setName = ruleSet ? ruleSet.name : '未命名规则集';
 
     if (rules.length === 0) {
-        toastr.warning('此图片集下没有图片可修改');
+        toastr.warning('此规则集下没有规则可修改');
         return;
     }
 
@@ -78,7 +78,7 @@ export async function showBatchEditPopup() {
             <i class="fa-solid fa-pen-to-square"></i> 批量修改图片
         </h3>
         <div style="font-size:0.88em;opacity:0.7;margin-bottom:12px;">
-            图片集：<strong>${escapeHtml(setName)}</strong>（共 ${rules.length} 条图片）
+            规则集：<strong>${escapeHtml(setName)}</strong>（共 ${rules.length} 条规则）
         </div>
 
         <div class="flex-container alignitemscenter margin0" style="gap:8px;margin-bottom:10px;padding:8px;background:var(--white15);border-radius:6px;">
@@ -100,7 +100,7 @@ export async function showBatchEditPopup() {
 
         <div style="font-size:0.82em;opacity:0.5;margin-top:4px;padding:6px;background:var(--white10);border-radius:4px;">
             <i class="fa-solid fa-info-circle"></i>
-            勾选后填写新值，确认后将应用到该图片集下的所有图片
+            勾选后填写新值，确认后将应用到该规则集下的所有规则
         </div>
     </div>
     `);

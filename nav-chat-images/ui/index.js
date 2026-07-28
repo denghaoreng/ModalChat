@@ -42,10 +42,10 @@ export async function renderChatImages() {
                 <i class="fa-solid fa-people-group"></i> 角色集 (${charSets.length})
             </span>
             <span class="mc-ci-tab" data-ci-tab="rule-sets" style="${tabStyle('rule-sets')}">
-                <i class="fa-solid fa-layer-group"></i> 图片集 (${ruleSets.length})
+                <i class="fa-solid fa-layer-group"></i> 规则集 (${ruleSets.length})
             </span>
             <span class="mc-ci-tab" data-ci-tab="rules" style="${tabStyle('rules')}">
-                <i class="fa-solid fa-list"></i> 图片 (${rules.length})
+                <i class="fa-solid fa-list"></i> 规则 (${rules.length})
             </span>
             <span class="mc-ci-tab" data-ci-tab="carousel" style="${tabStyle('carousel')}">
                 <i class="fa-solid fa-sliders"></i> 轮播设置
@@ -79,7 +79,7 @@ export function bindChatImagesEvents() {
     $(document).off('change', '#mc-ci-ruleset-filter, #mc-ci-rule-sort, #mc-ci-rs-sort').on('change', '#mc-ci-ruleset-filter, #mc-ci-rule-sort, #mc-ci-rs-sort', function () {
         renderChatImages(); bindChatImagesEvents();
     });
-    // 图片集搜索：点击按钮触发
+    // 规则集搜索：点击按钮触发
     $(document).off('click', '#mc-ci-rs-search-btn').on('click', '#mc-ci-rs-search-btn', function () {
         triggerRSSearch();
         renderChatImages(); bindChatImagesEvents();
@@ -89,7 +89,7 @@ export function bindChatImagesEvents() {
         triggerRuleSearch();
         renderChatImages(); bindChatImagesEvents();
     });
-    // === 分页：图片集 ===
+    // === 分页：规则集 ===
     $(document).off('click', '#mc-ci-rs-page-prev').on('click', '#mc-ci-rs-page-prev', function () {
         setRSPage(getRSPage() - 1);
         renderChatImages(); bindChatImagesEvents();
@@ -168,14 +168,14 @@ export function bindChatImagesEvents() {
         // 1. 复制角色集
         const newCsId = generateId('charset');
         data.charSets.push({ id: newCsId, name: cs.name + ' (副本)', enabled: true });
-        // 2. 复制其下所有图片集，记录新旧ID映射
+        // 2. 复制其下所有规则集，记录新旧ID映射
         const idMap = {};
         for (const rs of (data.ruleSets || []).filter(r => r.charSetId === cs.id)) {
             const newRsId = generateId('ruleset');
             idMap[rs.id] = newRsId;
             data.ruleSets.push({ id: newRsId, name: rs.name, enabled: true, order: data.ruleSets.length, charSetId: newCsId });
         }
-        // 3. 级联复制图片
+        // 3. 级联复制规则
         for (const rs of (data.ruleSets || []).filter(r => r.charSetId === newCsId)) {
             const oldRsId = Object.entries(idMap).find(([, v]) => v === rs.id)?.[0];
             if (!oldRsId) continue;
@@ -221,7 +221,7 @@ export function bindChatImagesEvents() {
     $(document).off('click', '#mc-ci-add-ruleset').on('click', '#mc-ci-add-ruleset', function () {
         const charId = $('#mc-ci-rs-charselect').val() || '';
         const setId = (charId && charId !== '__unbound' && charId !== '') ? charId : '';
-        addRuleSet({ name: '新图片集', charSetId: setId });
+        addRuleSet({ name: '新规则集', charSetId: setId });
         renderChatImages(); bindChatImagesEvents();
     });
     // 跳转到图片列表
@@ -237,18 +237,18 @@ export function bindChatImagesEvents() {
     // 删除
     $(document).off('click', '.mc-ci-rs-delete').on('click', '.mc-ci-rs-delete', function () {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
-        if (confirm('确定删除此图片集？')) { deleteRuleSet(id); renderChatImages(); bindChatImagesEvents(); }
+        if (confirm('确定删除此规则集？')) { deleteRuleSet(id); renderChatImages(); bindChatImagesEvents(); }
     });
-    // 复制图片集（含其下所有图片，批量操作单次保存）
+    // 复制规则集（含其下所有规则，批量操作单次保存）
     $(document).off('click', '.mc-ci-rs-copy').on('click', '.mc-ci-rs-copy', function () {
         const id = $(this).closest('.mc-ci-rs-item').data('id');
         const data = getChatImagesData();
         const rs = data.ruleSets.find(r => r.id === id);
         if (!rs) return;
-        // 1. 复制图片集
+        // 1. 复制规则集
         const newRsId = generateId('ruleset');
         data.ruleSets.push({ id: newRsId, name: rs.name + ' (副本)', enabled: true, order: data.ruleSets.length, charSetId: rs.charSetId || '' });
-        // 2. 复制其下所有图片
+        // 2. 复制其下所有规则
         for (const rule of (data.rules || []).filter(r => r.ruleSetId === rs.id)) {
             data.rules.push({
                 id: generateId('rule'), name: rule.name, regex: rule.regex || '',
@@ -324,10 +324,10 @@ export function bindChatImagesEvents() {
         for (const r of data.rules || []) r._expanded = false;
         saveSettings(); renderChatImages(); bindChatImagesEvents();
     });
-    // 添加图片（绑定到选中的图片集）
+    // 添加规则（绑定到选中的规则集）
     $(document).off('click', '#mc-ci-add-rule').on('click', '#mc-ci-add-rule', function () {
         const setId = $('#mc-ci-ruleset-filter').val() || '';
-        addRule({ name: '新图片', ruleSetId: (setId === '__unbound' ? '' : setId) });
+        addRule({ name: '新规则', ruleSetId: (setId === '__unbound' ? '' : setId) });
         renderChatImages(); bindChatImagesEvents();
     });
     // 管理图片：弹出文件选择器，选择图片引用到规则
@@ -343,7 +343,7 @@ export function bindChatImagesEvents() {
     // 删除规则
     $(document).off('click', '.mc-ci-rule-delete').on('click', '.mc-ci-rule-delete', function () {
         const id = $(this).closest('.mc-ci-rule-item').data('id');
-        if (confirm('确定删除此图片？')) { deleteRule(id); renderChatImages(); bindChatImagesEvents(); }
+        if (confirm('确定删除此规则？')) { deleteRule(id); renderChatImages(); bindChatImagesEvents(); }
     });
     // 复制规则（含图片引用，单次保存）
     $(document).off('click', '.mc-ci-rule-copy').on('click', '.mc-ci-rule-copy', function () {
