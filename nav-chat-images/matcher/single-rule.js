@@ -32,12 +32,14 @@ export async function matchSingleRule(rule, text) {
         const selected = selectImageByWeight(availableImages);
         if (!selected) return null;
 
+        const fileType = selected.registry?.type || 'image';
         return {
             image: {
                 registryId: selected.registryId,
-                name: selected.registry?.displayName || '图片',
+                name: selected.registry?.displayName || (fileType === 'video' ? '视频' : fileType === 'audio' ? '音频' : '图片'),
                 filename: selected.registry?.serverFilename || '',
                 url: await getFileUrl(selected.registry),
+                type: fileType,
             },
             ruleId: rule.id,
             order: rule.order ?? 0,

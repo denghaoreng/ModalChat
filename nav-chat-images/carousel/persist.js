@@ -16,7 +16,7 @@ export function persistCIResults(messageId, items) {
     if (!msg) return;
     if (!msg.extra) msg.extra = {};
     msg.extra.chatImagesResults = items.map(item => ({
-        image: { url: item.image?.url || '', name: item.image?.name || '' },
+        image: { url: item.image?.url || '', name: item.image?.name || '', type: item.image?.type || 'image' },
         ruleId: item.ruleId,
         order: item.order,
         duration: item.duration,

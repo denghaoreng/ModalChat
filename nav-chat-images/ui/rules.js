@@ -156,17 +156,29 @@ export async function renderRules() {
     return html;
 }
 
+function getFileType(url) {
+    if (!url) return 'image';
+    const ext = url.split('.').pop().toLowerCase();
+    if (['mp4', 'webm', 'ogg', 'mov', 'avi', 'mkv'].includes(ext)) return 'video';
+    if (['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac'].includes(ext)) return 'audio';
+    return 'image';
+}
+
 function renderRuleImages(rule, urlCache) {
     const images = rule.images || [];
     if (images.length === 0) {
-        return '<span style="opacity:0.5;font-size:0.85em;">暂无图片</span>';
+        return '<span style="opacity:0.5;font-size:0.85em;">暂无媒体</span>';
     }
     return images.map(img => {
         const url = urlCache[img.registryId];
+        const fileType = getFileType(url);
         return `
         <div class="mc-ci-rule-image-item" data-reg-id="${escapeHtml(img.registryId)}" style="display:flex;flex-direction:column;align-items:center;gap:2px;border:1px solid var(--borderColor);border-radius:4px;padding:3px;width:80px;">
-            <div style="width:70px;height:50px;overflow:hidden;border-radius:3px;background:var(--bg);display:flex;align-items:center;justify-content:center;">
-                ${url ? `<img src="${escapeHtml(url)}" style="max-width:100%;max-height:100%;object-fit:contain;" loading="lazy">` : '<i class="fa-solid fa-image" style="color:var(--grey40);font-size:1.2em;"></i>'}
+            <div class="mc-ci-rule-img-thumb" data-src="${escapeHtml(url || '')}" data-type="${fileType}" style="width:70px;height:50px;overflow:hidden;border-radius:3px;background:var(--bg);display:flex;align-items:center;justify-content:center;cursor:pointer;" title="点击放大查看">
+                ${fileType === 'video' && url ? `<video src="${escapeHtml(url)}" style="max-width:100%;max-height:100%;border-radius:3px;" muted></video>`
+                : fileType === 'audio' ? `<i class="fa-solid fa-music" style="color:var(--grey40);font-size:1.5em;"></i>`
+                : url ? `<img src="${escapeHtml(url)}" style="max-width:100%;max-height:100%;object-fit:contain;" loading="lazy">`
+                : '<i class="fa-solid fa-image" style="color:var(--grey40);font-size:1.2em;"></i>'}
             </div>
             <div style="display:flex;align-items:center;gap:2px;width:100%;font-size:0.7em;">
                 <input type="range" class="mc-ci-img-weight" data-reg-id="${escapeHtml(img.registryId)}" value="${img.weight ?? 50}" min="0" max="100" style="flex:1;height:2px;">

@@ -366,6 +366,13 @@ export function bindChatImagesEvents() {
         renderChatImages(); bindChatImagesEvents();
     });
 
+    // === 图片引用：缩略图点击放大 ===
+    $(document).off('click', '.mc-ci-rule-img-thumb').on('click', '.mc-ci-rule-img-thumb', function () {
+        const src = $(this).data('src');
+        if (src) {
+            import('../../shared/file-enlarge.js').then(m => m.showFileEnlarge(src)).catch(() => {});
+        }
+    });
     // === 图片引用：权重滑块 + 删除 ===
     let _imgWtTimers = {};
     $(document).off('input', '.mc-ci-img-weight').on('input', '.mc-ci-img-weight', function () {

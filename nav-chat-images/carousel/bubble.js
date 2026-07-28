@@ -1,7 +1,7 @@
 // carousel/bubble.js — 聊天气泡聊天图片轮播渲染（基于插位槽配置）
 
 import { getGeneralSettings, getAnimationTypes, getChatImagesData, getBouncePresets } from '../../core/data.js';
-import { escapeHtml, hexToRgb } from '../../shared/utils.js';
+import { escapeHtml, hexToRgb, AUDIO_EXTS, VIDEO_EXTS } from '../../shared/utils.js';
 import { showFileEnlarge } from '../../shared/file-enlarge.js';
 import { setupDragDeformation, autoBounce } from '../../shared/image-drag-physics/index.js';
 
@@ -46,9 +46,9 @@ export async function renderCIResults(messageId, items) {
                 $mt.length ? $mt.after(html) : $msg.find('.mes_content').append(html);
             }
 
-            // 点击放大
-            $msg.off('click touchend', '.mc-ci-slot-item img')
-                .on('click touchend', '.mc-ci-slot-item img', function (e) {
+            // 点击事件：图片/视频放大，音频不处理
+            $msg.off('click touchend', '.mc-ci-slot-item img, .mc-ci-slot-item video')
+                .on('click touchend', '.mc-ci-slot-item img, .mc-ci-slot-item video', function (e) {
                     if (e.type === 'touchend') return;
                     if ($(this).attr('data-mc-dragged')) return;
                     const $slotRes = $(this).closest('.mc-ci-slot-results');
@@ -62,16 +62,16 @@ export async function renderCIResults(messageId, items) {
                     }
                 });
 
-            // 拖拽抖动
-            if ($msg.find('.mc-ci-slot-item img').length) {
-                setupDragDeformation($msg, '.mc-ci-slot-item img');
+            // 拖拽抖动（图片和视频）
+            if ($msg.find('.mc-ci-slot-item img, .mc-ci-slot-item video').length) {
+                setupDragDeformation($msg, '.mc-ci-slot-item img, .mc-ci-slot-item video');
             }
 
             // 弹入动画（仅最新消息）
             if (distance === 0) {
                 const presets = getBouncePresets();
                 if (presets && presets.length > 0) {
-                    const $bounceImgs = $msg.find('.mc-ci-slot-item img');
+                    const $bounceImgs = $msg.find('.mc-ci-slot-item img, .mc-ci-slot-item video');
                     let loadedCount = 0;
                     const totalImgs = $bounceImgs.length;
                     if (totalImgs === 0) return;
@@ -81,15 +81,20 @@ export async function renderCIResults(messageId, items) {
                         }
                     }
                     $bounceImgs.each(function () {
-                        if (this.complete && this.naturalWidth) {
-                            loadedCount++;
-                            tryBounce();
-                        } else {
-                            this.addEventListener('load', function onLoad() {
-                                this.removeEventListener('load', onLoad);
+                        if (this.tagName === 'IMG') {
+                            if (this.complete && this.naturalWidth) {
                                 loadedCount++;
                                 tryBounce();
-                            });
+                            } else {
+                                this.addEventListener('load', function onLoad() {
+                                    this.removeEventListener('load', onLoad);
+                                    loadedCount++;
+                                    tryBounce();
+                                });
+                            }
+                        } else {
+                            loadedCount++;
+                            tryBounce();
                         }
                     });
                 }
@@ -108,7 +113,7 @@ function buildSlotHtml(items, slot, autoPlay, slotCfgIdx) {
     const totalDurationMs = totalDuration * 1000;
 
     const gs = getGeneralSettings();
-    const mw = gs?.imageWidth || 500, mh = gs?.imageHeight || 500;
+    const mw = gs?.mediaWidth || gs?.imageWidth || 500, mh = gs?.mediaHeight || gs?.imageHeight || 200;
     const bgColor = gs?.frameBackgroundColor || '#000000';
     const bgOpacity = gs?.frameBackgroundOpacity || 1;
     const bgRgb = hexToRgb(bgColor);
@@ -137,21 +142,33 @@ function buildSlotHtml(items, slot, autoPlay, slotCfgIdx) {
     }
     if (animDef && animDef.keyframes && animationDuration > 0) {
         animName = 'mc_ci_anim_' + slotId.replace(/[^a-z0-9]/gi, '_');
-        animStyle = `<style>.${animName} img{animation:${animName} ${animationDuration}s ${animDef.timingFunction || 'ease-out'}}@keyframes ${animName}{${animDef.keyframes}}</style>`;
+        animStyle = `<style>.${animName} img,.${animName} video{animation:${animName} ${animationDuration}s ${animDef.timingFunction || 'ease-out'}}@keyframes ${animName}{${animDef.keyframes}}</style>`;
     }
 
     let html = animStyle + `<div class="mc-ci-slot-results" data-slot-id="${slotId}" data-slot-cfg-idx="${slotCfgIdx}">`;
     items.forEach((item, idx) => {
         const url = item.image?.url;
         if (!url) return;
+        const fileType = item.image?.type || 'image';
+        const isVideo = fileType === 'video';
+        const isAudio = fileType === 'audio';
         const isFirst = idx === 0;
         const display = (!autoPlay || isFirst) ? 'block' : 'none';
         html += `<div class="mc-ci-slot-item ${animName}" data-slot-idx="${idx}" style="display:${display};text-align:center;">
-            <div style="font-size:0.82em;color:var(--grey40);margin-bottom:2px;">${escapeHtml(item.image.name || '')}</div>
-            <div style="position:relative;display:inline-block;max-width:100%;border-radius:8px;overflow:hidden;background:rgba(${bgRgb},${bgOpacity});">
-                <img src="${escapeHtml(url)}" style="${mediaStyle}" loading="eager" crossorigin="anonymous">
-            </div>
-        </div>`;
+            <div style="font-size:0.82em;color:var(--grey40);margin-bottom:2px;">${escapeHtml(item.image.name || '')}</div>`;
+        if (isAudio) {
+            const audioH = mh > 0 ? mh + 'px' : 'auto';
+            html += `<audio src="${escapeHtml(url)}" style="width:80%;max-width:80%;height:${audioH};display:block;margin:0 auto;" ${autoPlay && isFirst ? 'autoplay' : ''} controls preload="metadata"></audio>`;
+        } else {
+            html += `<div style="position:relative;display:inline-block;max-width:100%;border-radius:8px;overflow:hidden;background:rgba(${bgRgb},${bgOpacity});">`;
+            if (isVideo) {
+                html += `<video src="${escapeHtml(url)}" style="${mediaStyle}" ${autoPlay && isFirst ? 'autoplay' : ''} controls preload="metadata" playsinline></video>`;
+            } else {
+                html += `<img src="${escapeHtml(url)}" style="${mediaStyle}" loading="eager" crossorigin="anonymous">`;
+            }
+            html += '</div>';
+        }
+        html += '</div>';
     });
     html += '</div>';
 
@@ -160,36 +177,87 @@ function buildSlotHtml(items, slot, autoPlay, slotCfgIdx) {
             const $container = $(`.mc-ci-slot-results[data-slot-id="${slotId}"]`);
             if (!$container.length || items.length <= 1) return;
             let currentIdx = 0;
-            let totalTimer = null;
+            let timer = null;
+            let stopped = false;
 
+            function getMedia(idx) {
+                return $container.find(`.mc-ci-slot-item[data-slot-idx="${idx}"]`).find('video, audio');
+            }
             function showNext() {
                 const oldIdx = currentIdx;
                 currentIdx = (currentIdx + 1) % items.length;
+                const $oldMedia = getMedia(oldIdx);
+                if ($oldMedia.length) { $oldMedia[0].pause(); $oldMedia[0].currentTime = 0; }
                 $container.find(`.mc-ci-slot-item[data-slot-idx="${oldIdx}"]`).hide();
                 const $newItem = $container.find(`.mc-ci-slot-item[data-slot-idx="${currentIdx}"]`).show();
-                $newItem.find('img').each(function () {
+                $newItem.find('img, video').each(function () {
                     this.style.animation = 'none';
                     requestAnimationFrame(() => { this.style.animation = ''; });
                 });
+                const $newMedia = getMedia(currentIdx);
+                if ($newMedia.length) $newMedia[0].play().catch(() => {});
             }
 
-            function scheduleNext(currentItemIdx) {
-                const dur = items[currentItemIdx]?.duration || 5000;
-                return setTimeout(() => {
-                    showNext();
-                    totalTimer = setTimeout(() => scheduleNext(currentIdx), 0);
-                }, dur);
+            function getDuration(item) {
+                const ft = item.image?.type || 'image';
+                // 视频和音频用自身长度，图片用规则设定的 duration
+                if (ft === 'video' || ft === 'audio') return -1;
+                return item.duration || 5000;
             }
 
-            // 总时长限制
-            if (totalDurationMs > 0) {
-                setTimeout(() => {
-                    if (totalTimer) clearTimeout(totalTimer);
-                }, totalDurationMs);
+            let startTime = Date.now();
+
+            function stopCarousel() {
+                if (stopped) return;
+                stopped = true;
+                if (timer) { clearTimeout(timer); timer = null; }
+                $container.find('video, audio').each(function () { this.pause(); });
+            }
+            function resumeCarousel() {
+                if (!stopped) return;
+                startTime = Date.now();
+                stopped = false;
+                if (timer) { clearTimeout(timer); timer = null; }
+                const item = items[currentIdx];
+                const dur = getDuration(item);
+                if (dur > 0) { timer = setTimeout(advanceAndSchedule, dur); }
+                else if (totalDurationMs > 0) { timer = setTimeout(function () { if (!stopped) stopCarousel(); }, totalDurationMs); }
+            }
+            function advanceAndSchedule() {
+                if (stopped) return;
+                if (totalDurationMs > 0 && Date.now() - startTime >= totalDurationMs) { stopCarousel(); return; }
+                showNext();
+                scheduleNext();
+            }
+            function scheduleNext() {
+                if (stopped) return;
+                if (totalDurationMs > 0 && Date.now() - startTime >= totalDurationMs) { stopCarousel(); return; }
+                const item = items[currentIdx];
+                const dur = getDuration(item);
+                if (dur > 0) {
+                    timer = setTimeout(advanceAndSchedule, dur);
+                } else {
+                    // 视频/音频：等待 ended 事件或总时长限制
+                    const remaining = Math.max(0, totalDurationMs - (Date.now() - startTime));
+                    if (totalDurationMs > 0 && remaining > 0) {
+                        timer = setTimeout(function () { if (!stopped) stopCarousel(); }, remaining);
+                    }
+                }
             }
 
-            scheduleNext(0);
-        }, 0);
+            // 为每个视频/音频绑定 ended 事件，播放完毕后自动切换
+            items.forEach((item, idx) => {
+                const ft = item.image?.type || 'image';
+                if (ft === 'video' || ft === 'audio') {
+                    const $el = getMedia(idx);
+                    if ($el.length) {
+                        $el.on('ended', function () { if (!stopped && idx === currentIdx) advanceAndSchedule(); });
+                        $el.on('play', function () { if (stopped) resumeCarousel(); });
+                    }
+                }
+            });
+            scheduleNext();
+        }, 100);
     }
 
     return html;

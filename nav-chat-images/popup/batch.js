@@ -71,14 +71,17 @@ export async function showBatchEditPopup() {
     let newDuration = 5000;
     let modifyRegex = false;
     let newRegex = '';
+    let orderAction = 'none'; // 'none' | 'reset' | 'fill' | 'shuffle'
+    let orderFillValue = 1;
+    const ruleCount = rules.length;
 
     const popupContent = $(`
     <div style="padding:8px 12px;min-width:350px;">
         <h3 style="margin:0 0 10px 0;font-size:1.05em;border-bottom:1px solid var(--borderColor);padding-bottom:8px;">
-            <i class="fa-solid fa-pen-to-square"></i> 批量修改图片
+            <i class="fa-solid fa-pen-to-square"></i> 批量修改规则
         </h3>
         <div style="font-size:0.88em;opacity:0.7;margin-bottom:12px;">
-            规则集：<strong>${escapeHtml(setName)}</strong>（共 ${rules.length} 条规则）
+            规则集：<strong>${escapeHtml(setName)}</strong>（共 ${ruleCount} 条规则）
         </div>
 
         <div class="flex-container alignitemscenter margin0" style="gap:8px;margin-bottom:10px;padding:8px;background:var(--white15);border-radius:6px;">
@@ -98,9 +101,31 @@ export async function showBatchEditPopup() {
             <input type="text" id="batch-edit-regex" class="text_pole flex1" placeholder="输入新的正则表达式" style="font-family:monospace;font-size:0.9em;" disabled>
         </div>
 
+        <div style="border-top:1px solid var(--borderColor);padding-top:8px;margin-bottom:8px;">
+            <div style="font-size:0.9em;font-weight:bold;margin-bottom:6px;"><i class="fa-solid fa-arrow-up-1-9"></i> 顺序操作</div>
+            <div style="display:flex;gap:4px;margin-bottom:4px;flex-wrap:wrap;">
+                <label class="menu_button" style="font-size:0.82em;flex:1;text-align:center;cursor:pointer;white-space:nowrap;" title="从1递增">
+                    <input type="radio" name="batch-order-action" value="reset" style="display:none;">
+                    <span>🔢 从1递增</span>
+                </label>
+                <label class="menu_button" style="font-size:0.82em;flex:1;text-align:center;cursor:pointer;white-space:nowrap;" title="统一置值">
+                    <input type="radio" name="batch-order-action" value="fill" style="display:none;">
+                    <span>📌 统一置值</span>
+                </label>
+                <label class="menu_button" style="font-size:0.82em;flex:1;text-align:center;cursor:pointer;white-space:nowrap;" title="随机打乱">
+                    <input type="radio" name="batch-order-action" value="shuffle" style="display:none;">
+                    <span>🎲 随机打乱</span>
+                </label>
+            </div>
+            <div id="batch-order-fill-row" style="display:none;gap:6px;align-items:center;margin:4px 0;flex-wrap:wrap;">
+                <span style="font-size:0.85em;color:var(--grey40);">顺序值</span>
+                <input id="batch-order-fill-value" class="text_pole" type="number" value="1" min="1" step="1" style="width:60px;font-size:0.85em;text-align:center;padding:2px 4px;">
+            </div>
+        </div>
+
         <div style="font-size:0.82em;opacity:0.5;margin-top:4px;padding:6px;background:var(--white10);border-radius:4px;">
             <i class="fa-solid fa-info-circle"></i>
-            勾选后填写新值，确认后将应用到该规则集下的所有规则
+            勾选后点击"确认修改"统一应用到该规则集下的所有规则
         </div>
     </div>
     `);
@@ -120,6 +145,24 @@ export async function showBatchEditPopup() {
         newRegex = $(this).val();
     });
 
+    // 顺序操作：单选用 radio 切换
+    popupContent.find('input[name="batch-order-action"]').on('change', function () {
+        orderAction = $(this).val();
+        // 高亮选中项
+        popupContent.find('label.menu_button').css('border-color', '');
+        $(this).closest('label.menu_button').css('border-color', 'var(--primary)');
+        const $fillRow = popupContent.find('#batch-order-fill-row');
+        if (orderAction === 'fill') {
+            $fillRow.show();
+            $fillRow.find('#batch-order-fill-value').focus().select();
+        } else {
+            $fillRow.hide();
+        }
+    });
+    popupContent.find('#batch-order-fill-value').on('input', function () {
+        orderFillValue = parseInt($(this).val()) || 1;
+    });
+
     const result = await callGenericPopup(popupContent, POPUP_TYPE.TEXT, '', {
         okButton: '确认修改',
         cancelButton: '取消',
@@ -129,6 +172,29 @@ export async function showBatchEditPopup() {
     if (!result) return;
 
     let count = 0;
+    const rsRules = getRulesData().rules.filter(r => r.ruleSetId === setId);
+
+    // 1. 顺序操作
+    if (orderAction === 'reset') {
+        rsRules.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        rsRules.forEach((rule, i) => { rule.order = i + 1; });
+        count++;
+    } else if (orderAction === 'fill') {
+        const val = Math.max(1, orderFillValue);
+        rsRules.forEach(rule => { rule.order = val; });
+        count++;
+    } else if (orderAction === 'shuffle') {
+        const n = rsRules.length;
+        const nums = Array.from({ length: n }, (_, i) => i + 1);
+        for (let i = nums.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [nums[i], nums[j]] = [nums[j], nums[i]];
+        }
+        rsRules.forEach((rule, i) => { rule.order = nums[i]; });
+        count++;
+    }
+
+    // 2. 时长/正则修改
     for (const rule of rules) {
         const updates = {};
         if (modifyDuration) updates.duration = newDuration;
@@ -140,6 +206,6 @@ export async function showBatchEditPopup() {
     }
     saveSettings();
 
-    if (count > 0) toastr.success(`已修改 ${count} 条图片`);
+    if (count > 0) toastr.success(`已修改 ${count} 条规则`);
     else toastr.warning('未做任何修改');
 }
