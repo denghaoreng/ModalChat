@@ -35,8 +35,7 @@ export const _PARAM_DEFS = {
         { key: 'imgWidth',  label: '缩放系数', min: 100, max: 2000, step: 10,  unit: '',  fromRaw: v => Math.round(v ?? 600),               toRaw: v => Math.max(100, Math.min(2000, Math.round(v))) },
         { key: 'phaseOffset', label: '相位', min: 0,   max: 360, step: 1,   unit: '°',   fromRaw: v => Math.round(v ?? 0),                  toRaw: v => Math.max(0, Math.min(360, v)) },
         { key: 'freqStart', label: '快晃',   min: 0.01, max: 100, step: 0.1, unit: 'Hz', fromRaw: v => +(v ?? 1).toFixed(2),                toRaw: v => Math.max(0.01, Math.min(100, v)) },
-        { key: 'freqEnd',   label: '慢晃',   min: 0.001, max: 50, step: 0.01, unit: 'Hz', fromRaw: v => +(v ?? 0.1).toFixed(3),              toRaw: v => Math.max(0.001, Math.min(50, v)) },
-        { key: 'decay',     label: '力时衰减', min: 0,   max: 2,   step: 0.001, unit: '', fromRaw: v => +(v ?? 0.04).toFixed(3),             toRaw: v => Math.max(0, Math.min(2, v)) },
+        { key: 'freqEnd',   label: '慢晃',   min: 0.001, max: 50, step: 0.01, unit: 'Hz', fromRaw: v => +(v ?? 0.1).toFixed(3),              toRaw: v => Math.max(0.001, Math.min(50, v)) },        { key: 'chirpDuration', label: '晃变时间', min: 0.1, max: 600, step: 1, unit: '秒', fromRaw: v => v ?? 30,                               toRaw: v => Math.max(0.1, Math.min(600, v)) },        { key: 'decay',     label: '力时衰减', min: 0,   max: 2,   step: 0.001, unit: '', fromRaw: v => +(v ?? 0.04).toFixed(3),             toRaw: v => Math.max(0, Math.min(2, v)) },
         { key: 'displaceMode', label: '位移模式', type: 'select', options: [{v:'parallel',l:'平行'},{v:'vortex',l:'旋涡'},{v:'vortexCCW',l:'旋涡←'},{v:'radial',l:'收缩'},{v:'expand',l:'放大'}], default: 'parallel' },
         { key: 'spatialFalloff', label: '力范函数', type: 'select', options: [{v:'smooth',l:'平滑 (1-t²)ⁿ'},{v:'gaussian',l:'高斯 exp(-t²)'},{v:'linear',l:'线性 1-t'},{v:'cosine',l:'余弦 cos(t·π/2)'}], default: 'smooth' },
         { key: 'spatialDecay', label: '力范衰减', min: 0,   max: 20,  step: 0.01, unit: '', fromRaw: v => +(v ?? 0.5).toFixed(2),              toRaw: v => Math.max(0, Math.min(20, v)) },
@@ -56,6 +55,7 @@ export const _PARAM_DEFS = {
         { key: 'phaseOffset', label: '相位', min: 0,   max: 360, step: 1,   unit: '°',   fromRaw: v => Math.round(v ?? 0),                  toRaw: v => Math.max(0, Math.min(360, v)) },
         { key: 'freqStart', label: '快晃',   min: 0.01, max: 100, step: 0.1, unit: 'Hz', fromRaw: v => +(v ?? 1).toFixed(2),                toRaw: v => Math.max(0.01, Math.min(100, v)) },
         { key: 'freqEnd',   label: '慢晃',   min: 0.001, max: 50, step: 0.01, unit: 'Hz', fromRaw: v => +(v ?? 0.1).toFixed(3),              toRaw: v => Math.max(0.001, Math.min(50, v)) },
+        { key: 'chirpDuration', label: '晃变时间', min: 0.1, max: 600, step: 1, unit: '秒', fromRaw: v => v ?? 30,                               toRaw: v => Math.max(0.1, Math.min(600, v)) },
         { key: 'decay',     label: '力时衰减', min: 0,   max: 2,   step: 0.001, unit: '', fromRaw: v => +(v ?? 0.04).toFixed(3),             toRaw: v => Math.max(0, Math.min(2, v)) },
         { key: 'displaceMode', label: '位移模式', type: 'select', options: [{v:'parallel',l:'平行'},{v:'vortex',l:'旋涡'},{v:'vortexCCW',l:'旋涡←'},{v:'radial',l:'收缩'},{v:'expand',l:'放大'}], default: 'parallel' },
         { key: 'spatialFalloff', label: '力范函数', type: 'select', options: [{v:'smooth',l:'平滑 (1-t²)ⁿ'},{v:'gaussian',l:'高斯 exp(-t²)'},{v:'linear',l:'线性 1-t'},{v:'cosine',l:'余弦 cos(t·π/2)'}], default: 'smooth' },
@@ -90,7 +90,7 @@ export function _renderParams(editor) {
     }
     const p = pts[idx];
     const defs = _PARAM_DEFS[p.type === 'bone' ? 'bone' : 'point'];
-    const COLS = 6, ROWS = 3;
+    const COLS = 6, ROWS = 4;
     const totalCells = COLS * ROWS;
 
     // 如果参数 key 列表没变，只更新输入框的值（避免重建 DOM）

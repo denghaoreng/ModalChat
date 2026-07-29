@@ -8,6 +8,7 @@ let _fastCanvas = null;
 let _fastCtx = null;
 let _fastImageData = null;
 let _fastData = null;
+let _fastLastPrecomp = null; // 追踪上次预计算场，避免重复全清
 
 function _ensureFastCanvas() {
     const size = _MAP_SIZE;
@@ -18,6 +19,7 @@ function _ensureFastCanvas() {
         _fastCtx = _fastCanvas.getContext('2d');
         _fastImageData = _fastCtx.createImageData(size, size);
         _fastData = _fastImageData.data;
+        _fastLastPrecomp = null; // 新 canvas 需要首次全清
     }
 }
 
@@ -26,7 +28,7 @@ function _ensureFastCanvas() {
  * 在弹跳开始时执行一次，之后每帧只需乘以当前 scale 和方向。
  * @returns {{ falloff: Float32Array, dirX: Float32Array, dirY: Float32Array, isParallel: boolean }}
  */
-function _precomputeField(originX, originY, dirX, dirY, opts) {
+export function _precomputeField(originX, originY, dirX, dirY, opts) {
     const size = _MAP_SIZE;
     const radius = opts.jRadius != null ? opts.jRadius : 0.08;
     const spread = opts.spread != null ? opts.spread : 0.1;
@@ -41,8 +43,102 @@ function _precomputeField(originX, originY, dirX, dirY, opts) {
     const jRadius2 = opts.jRadius != null ? opts.jRadius : 0.08;
     const eRadius2 = opts.eRadius != null ? opts.eRadius : jRadius2;
 
-    // 如果是 bone 类型，退回到原始 _genMapBone（骨骼场结构复杂，预计算收益有限）
-    if (type === 'bone') return null;
+    // ── bone 类型：胶囊场预计算 ──
+    if (type === 'bone') {
+        const px = originX * size, py = originY * size;
+        const exPx = endX * size, eyPx = endY * size;
+        const bx = exPx - px, by = eyPx - py;
+        const boneLen = Math.sqrt(bx * bx + by * by) || 1;
+        const bnx = bx / boneLen, bny = by / boneLen;
+        const jr_px = jRadius2 * size, er_px = eRadius2 * size;
+        const gamma = boneLen > 0.001 ? Math.asin(Math.max(-1, Math.min(1, (jr_px - er_px) / boneLen))) : 0;
+        const cosG = Math.cos(gamma);
+        const spreadMul = 1 + spread * 2;
+        const alongSigma = 0.15 + spread * 0.35;
+
+        // 计算骨胳胶囊 bounding box
+        const boundMargin = Math.max(jr_px, er_px) * spreadMul + 1;
+        const yStartB = Math.max(0, Math.floor(Math.min(py, eyPx) - boundMargin));
+        const yEndB   = Math.min(size, Math.ceil(Math.max(py, eyPx) + boundMargin));
+        const xStartB = Math.max(0, Math.floor(Math.min(px, exPx) - boundMargin));
+        const xEndB   = Math.min(size, Math.ceil(Math.max(px, exPx) + boundMargin));
+
+        const falloff = new Float32Array(size * size);
+        const dirFieldX = new Float32Array(size * size);
+        const dirFieldY = new Float32Array(size * size);
+        const isParallel = displaceMode === 'parallel';
+
+        // direction mode handler（bone 类型的胶囊几何自带纵向渐变，无需 multT）
+        let getDir = null;
+        if (displaceMode === 'vortex') {
+            getDir = (ddx, ddy, euclid) => {
+                const safeD = Math.max(euclid, 0.001);
+                return { dx: ddy / safeD, dy: -ddx / safeD };
+            };
+        } else if (displaceMode === 'vortexCCW') {
+            getDir = (ddx, ddy, euclid) => {
+                const safeD = Math.max(euclid, 0.001);
+                return { dx: -ddy / safeD, dy: ddx / safeD };
+            };
+        } else if (displaceMode === 'radial' || displaceMode === 'expand') {
+            const sign = displaceMode === 'radial' ? -1 : 1;
+            getDir = (ddx, ddy, euclid) => {
+                const safeD = Math.max(euclid, 0.001);
+                return { dx: sign * ddx / safeD, dy: sign * ddy / safeD };
+            };
+        }
+
+        // falloff LUT
+        const LUT_SIZE = 1024;
+        const lut = new Float32Array(LUT_SIZE);
+        for (let i = 0; i < LUT_SIZE; i++) {
+            lut[i] = _falloffFunc(i / (LUT_SIZE - 1), spatialFalloff, spatialDecay);
+        }
+
+        for (let y = yStartB; y < yEndB; y++) {
+            for (let x = xStartB; x < xEndB; x++) {
+                const dx = x - px, dy = y - py;
+                const euclid = Math.sqrt(dx * dx + dy * dy) || 1;
+                const t = (dx * bnx + dy * bny) / boneLen;
+                let along;
+                if (t <= 0) {
+                    along = 0;
+                } else if (t <= 1) {
+                    along = t;
+                } else {
+                    const beyond = t - 1;
+                    along = Math.exp(-(beyond * beyond) / (2 * alongSigma * alongSigma));
+                }
+                const capR = (jr_px + (er_px - jr_px) * Math.min(1, Math.max(0, t))) * cosG;
+                let dist;
+                if (t < 0) {
+                    dist = euclid;
+                } else if (t > 1) {
+                    dist = Math.sqrt((x - exPx) * (x - exPx) + (y - eyPx) * (y - eyPx));
+                } else {
+                    dist = Math.abs(-dx * bny + dy * bnx);
+                }
+                const capEdge = capR * spreadMul;
+                const crossWeight = dist < capEdge ? lut[Math.min(Math.round(dist / capEdge * (LUT_SIZE - 1)), LUT_SIZE - 1)] : 0;
+                const f = along * crossWeight;
+
+                const idx = y * size + x;
+                falloff[idx] = f;
+                if (isParallel) {
+                    dirFieldX[idx] = dirX;
+                    dirFieldY[idx] = dirY;
+                } else if (getDir) {
+                    const d = getDir(dx, dy, euclid);
+                    dirFieldX[idx] = d.dx;
+                    dirFieldY[idx] = d.dy;
+                } else {
+                    dirFieldX[idx] = dx / euclid;
+                    dirFieldY[idx] = dy / euclid;
+                }
+            }
+        }
+        return { falloff, dirFieldX, dirFieldY, isParallel, yStart: yStartB, yEnd: yEndB, xStart: xStartB, xEnd: xEndB, size };
+    }
 
     const px = originX * size, py = originY * size;
     const hasRadius = radius > 0;
@@ -135,16 +231,19 @@ function _precomputeField(originX, originY, dirX, dirY, opts) {
 /**
  * 基于预计算场快速生成位移贴图（仅乘加运算，无 sqrt/branch）。
  */
-function _genMapFast(precomp, ux, uy, scale) {
+export function _genMapFast(precomp, ux, uy, scale) {
     _ensureFastCanvas();
     const size = precomp.size;
     const data = _fastData;
     const { falloff, dirFieldX, dirFieldY, isParallel, yStart, yEnd, xStart, xEnd } = precomp;
 
-    // 先全部填充零位移
+    // 首次调用此 precomp 需全清；后续帧复用（相同 precomp 则 bounding box 不变），跳过全清
     const zero = 128;
-    for (let i = 0; i < size * size * 4; i += 4) {
-        data[i] = zero; data[i+1] = zero; data[i+2] = zero; data[i+3] = 255;
+    if (_fastLastPrecomp !== precomp) {
+        for (let i = 0; i < size * size * 4; i += 4) {
+            data[i] = zero; data[i+1] = zero; data[i+2] = zero; data[i+3] = 255;
+        }
+        _fastLastPrecomp = precomp;
     }
 
     const scale40 = scale * 40;
@@ -193,14 +292,14 @@ export function _startBounce(el, originX, originY, dirX, dirY, startScale, opts)
     const endY = opts.endY != null ? opts.endY : originY;
     const jRadius = opts.jRadius != null ? opts.jRadius : 0.08;
     const eRadius = opts.eRadius != null ? opts.eRadius : jRadius;
-    // 频率线性扫频：从 freqStart Hz 渐变到 freqEnd Hz（约 10 秒完成扫频）
+    // 频率线性扫频：从 freqStart Hz 渐变到 freqEnd Hz
     const startFreq = opts.freqStart || 1;
     const endFreq = opts.freqEnd != null ? opts.freqEnd : 0.1;
-    const chirpDuration = 10;
+    const chirpDuration = opts.chirpDuration != null ? opts.chirpDuration : 30;
     // 相位偏移（度→弧度）
     const phaseOffsetRad = (opts.phaseOffset || 0) * Math.PI / 180;
     // 衰减率
-    const decayRate = opts.decay != null ? opts.decay : 0.04;
+    const decayRate = opts.decay != null ? opts.decay : 0.01;
     // 正交摆动比：产生椭圆/果冻感的侧向抖动幅度（主方向的比例）
     const perpRatio = opts.perpRatio != null ? opts.perpRatio : 0.12;
 
@@ -208,8 +307,8 @@ export function _startBounce(el, originX, originY, dirX, dirY, startScale, opts)
     let animFrame = null, feDisp = null, svgEl = null, feImg = null;
     let _mapHref = ''; // 缓存初始贴图 href，动画中不重新生成
 
-    // ── 预计算静态场（非 bone 类型），每帧避免 sqrt/branch ──
-    const precomp = type !== 'bone' ? _precomputeField(originX, originY, dirX, dirY, opts) : null;
+    // ── 预计算静态场，每帧避免 sqrt/branch ──
+    const precomp = _precomputeField(originX, originY, dirX, dirY, opts);
 
     // ── 生成初始位移贴图（仅一次），动画只调 feDisp.scale ──
     function _initMap() {

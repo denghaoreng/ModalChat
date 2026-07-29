@@ -1,8 +1,7 @@
 // ── 交互拖拽绑定 ──
 
 import { _NS, _addFilterUrl, _removeFilterUrl, _getPos } from './svg-utils.js';
-import { _genMap } from './displacement-maps.js';
-import { _startBounce } from './bounce-engine.js';
+import { _startBounce, _precomputeField, _genMapFast } from './bounce-engine.js';
 
 /**
  * 为容器内的图片/视频元素绑定拖拽变形交互。
@@ -36,17 +35,28 @@ export function setupDragDeformation($container, selector) {
             let isDragging = false, maxDist = 0;
             let lastDirX = 0, lastDirY = -1;
             let _dragSvgEl = null, _dragFeDisp = null, _dragFeImg = null;
+            let _dragPrecomp = null; // 预计算静态场
+            let _dragState = null; // rAF 节流：暂存待更新的方向/力度
+            let _rafPending = false;
             const _dragFid = 'mc_drag_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
 
             function _dragSetMap(ux, uy, s) {
-                const parent = _dragFeImg ? _dragFeImg.parentNode : null;
-                if (!parent) return;
-                const newImg = document.createElementNS(_NS, 'feImage');
-                newImg.setAttribute('result', 'map');
-                newImg.setAttribute('href', _genMap(originX, originY, ux, uy, s) + '#t=' + Date.now());
-                parent.replaceChild(newImg, _dragFeImg);
-                _dragFeImg = newImg;
+                if (!_dragFeImg) return;
+                _dragFeImg.setAttribute('href', _genMapFast(_dragPrecomp, ux, uy, s));
                 if (_dragFeDisp) _dragFeDisp.setAttribute('scale', String(Math.abs(s) * 10 + 2));
+            }
+
+            function _scheduleDragUpdate(ux, uy, s) {
+                _dragState = { ux, uy, s };
+                if (_rafPending) return;
+                _rafPending = true;
+                requestAnimationFrame(() => {
+                    _rafPending = false;
+                    if (_dragState) {
+                        _dragSetMap(_dragState.ux, _dragState.uy, _dragState.s);
+                        _dragState = null;
+                    }
+                });
             }
 
             function _dragEnsureSvg() {
@@ -59,9 +69,15 @@ export function setupDragDeformation($container, selector) {
                 filter.setAttribute('x', '0%'); filter.setAttribute('y', '0%');
                 filter.setAttribute('width', '100%'); filter.setAttribute('height', '100%');
                 filter.setAttribute('color-interpolation-filters', 'sRGB');
+                // 预计算静态场（非 bone 类型）
+                _dragPrecomp = _precomputeField(originX, originY, 0, -1, {
+                    jRadius: 0.08, spread: 0.1, spatialDecay: 0.5,
+                    spatialFalloff: 'smooth', displaceMode: 'parallel',
+                    ellipticity: 0, ellipseAngle: 0,
+                });
                 _dragFeImg = document.createElementNS(_NS, 'feImage');
                 _dragFeImg.setAttribute('result', 'map');
-                _dragFeImg.setAttribute('href', _genMap(originX, originY, 0, -1, 0.01));
+                _dragFeImg.setAttribute('href', _genMapFast(_dragPrecomp, 0, -1, 0.01));
                 _dragFeDisp = document.createElementNS(_NS, 'feDisplacementMap');
                 _dragFeDisp.setAttribute('in', 'SourceGraphic');
                 _dragFeDisp.setAttribute('in2', 'map');
@@ -93,6 +109,7 @@ export function setupDragDeformation($container, selector) {
                     _dragEnsureSvg();
                     const norm = dist || 0.001;
                     lastDirX = dx / norm; lastDirY = dy / norm;
+                    // 首次激活直接更新（即时反馈）
                     _dragSetMap(lastDirX, lastDirY, Math.min(dist * 3, 4));
                     return;
                 }
@@ -100,7 +117,8 @@ export function setupDragDeformation($container, selector) {
                 if (dist > maxDist) maxDist = dist;
                 const norm = dist || 0.001;
                 lastDirX = dx / norm; lastDirY = dy / norm;
-                _dragSetMap(lastDirX, lastDirY, Math.min(dist * 3, 4));
+                // 后续更新通过 rAF 节流，避免 mousemove 高频触发 toDataURL
+                _scheduleDragUpdate(lastDirX, lastDirY, Math.min(dist * 3, 4));
             }
 
             // ── 松开 → 启用独立弹跳动画 ──

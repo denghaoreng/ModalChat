@@ -175,7 +175,7 @@ export const RenderMixin = {
         if (this.points.length > 20 && !isHover && !isDragging) {
             ctx.fillText('#' + (idx + 1), cx + 8, cy - 4);
         } else {
-            ctx.fillText('#' + (idx + 1) + ' 力:' + p.scale.toFixed(1) + ' 径:' + (p.radius * 100).toFixed(0) + '% ' + (p.freqStart || 0).toFixed(1) + '→' + (p.freqEnd || 0).toFixed(1) + 'Hz 衰:' + (p.decay != null ? p.decay : 0.04).toFixed(3) + ' 散:' + (p.spread != null ? p.spread : 0.5).toFixed(2), cx + 8, cy - 4);
+            ctx.fillText('#' + (idx + 1) + ' 力:' + p.scale.toFixed(1) + ' 径:' + (p.radius * 100).toFixed(0) + '% ' + (p.freqStart || 0).toFixed(1) + '→' + (p.freqEnd || 0).toFixed(1) + 'Hz 晃:' + (p.chirpDuration ?? 30) + 's 衰:' + (p.decay != null ? p.decay : 0.01).toFixed(3) + ' 散:' + (p.spread != null ? p.spread : 0.5).toFixed(2), cx + 8, cy - 4);
         }
     },
 
@@ -295,7 +295,7 @@ export const RenderMixin = {
         if (this.points.length > 20 && !isHover && !isDragging) {
             ctx.fillText('🦴#' + (bIdx + 1), ex + 8, ey - 4);
         } else {
-            ctx.fillText('🦴#' + (bIdx + 1) + ' 力:' + p.scale.toFixed(1) + ' 关径:' + Math.round((p.radius || 8) * 100) + '% 末径:' + Math.round((p.endRadius != null ? p.endRadius : (p.radius || 0.08)) * 100) + '% ' + (p.freqStart || 0).toFixed(1) + '→' + (p.freqEnd || 0).toFixed(1) + 'Hz 衰:' + (p.decay != null ? p.decay : 0.04).toFixed(3) + ' 散:' + (p.spread != null ? p.spread : 0.5).toFixed(2), ex + 8, ey - 4);
+            ctx.fillText('🦴#' + (bIdx + 1) + ' 力:' + p.scale.toFixed(1) + ' 关径:' + Math.round((p.radius || 8) * 100) + '% 末径:' + Math.round((p.endRadius != null ? p.endRadius : (p.radius || 0.08)) * 100) + '% ' + (p.freqStart || 0).toFixed(1) + '→' + (p.freqEnd || 0).toFixed(1) + 'Hz 晃:' + (p.chirpDuration ?? 30) + 's 衰:' + (p.decay != null ? p.decay : 0.01).toFixed(3) + ' 散:' + (p.spread != null ? p.spread : 0.5).toFixed(2), ex + 8, ey - 4);
         }
     },
 };
