@@ -88,50 +88,96 @@ export function _genMap(ox, oy, ux, uy, scale, radius, spread, spatialDecay, spa
             _lut[i] = _falloffFunc(i / (_LUT_SIZE - 1), sf, sd);
         }
     }
-    for (let y = 0; y < size; y++) {
-        for (let x = 0; x < size; x++) {
+
+    // ── 提取模式方向函数，避免内循环分支 ──
+    let _dirFunc = null;
+    let _multT = false; // radial/expand 需要 f *= t
+    if (hasRadius && displaceMode === 'vortex') {
+        _dirFunc = (ddx, ddy, euclid) => {
+            const safeD = Math.max(euclid, 0.001);
+            return { dirX: ddy / safeD, dirY: -ddx / safeD };
+        };
+    } else if (hasRadius && displaceMode === 'vortexCCW') {
+        _dirFunc = (ddx, ddy, euclid) => {
+            const safeD = Math.max(euclid, 0.001);
+            return { dirX: -ddy / safeD, dirY: ddx / safeD };
+        };
+    } else if (hasRadius && (displaceMode === 'radial' || displaceMode === 'expand')) {
+        const sign = displaceMode === 'radial' ? -1 : 1;
+        _multT = true;
+        _dirFunc = (ddx, ddy, euclid) => {
+            const safeD = Math.max(euclid, 0.001);
+            return { dirX: sign * ddx / safeD, dirY: sign * ddy / safeD };
+        };
+    }
+
+    // ── 计算有效 bounding box，跳过零位移区域 ──
+    let yStart = 0, yEnd = size, xStart = 0, xEnd = size;
+    if (hasRadius) {
+        const bound = Math.ceil(maxDist);
+        yStart = Math.max(0, Math.floor(py - bound));
+        yEnd   = Math.min(size, Math.ceil(py + bound));
+        xStart = Math.max(0, Math.floor(px - bound));
+        xEnd   = Math.min(size, Math.ceil(px + bound));
+    }
+
+    const scale40 = scale * 40;
+    const invLut = 1 / (_LUT_SIZE - 1);
+    const useEllip = el > 0.001;
+
+    for (let y = yStart; y < yEnd; y++) {
+        const rowIdx = y * size * 4;
+        for (let x = xStart; x < xEnd; x++) {
             const ddx = x - px, ddy = y - py;
             const euclid = Math.sqrt(ddx * ddx + ddy * ddy);
-            const dist = el > 0.001 ? _ellipDist(ddx, ddy, el, ea) : euclid;
+            const dist = useEllip ? _ellipDist(ddx, ddy, el, ea) : euclid;
             let f;
             let dirX = ux, dirY = uy;
+
             if (hasRadius) {
                 const t = dist / maxDist;
-                f = _lut ? _lut[Math.min(Math.round(t * (_LUT_SIZE - 1)), _LUT_SIZE - 1)] : 0;
-                if (displaceMode === 'vortex') {
-                    const safeD = Math.max(euclid, 0.001);
-                    dirX = ddy / safeD;
-                    dirY = -ddx / safeD;
-                } else if (displaceMode === 'vortexCCW') {
-                    const safeD = Math.max(euclid, 0.001);
-                    dirX = -ddy / safeD;
-                    dirY = ddx / safeD;
-                } else if (displaceMode === 'radial') {
-                    // 收缩：像素向中心消失，方向指向中心
-                    const safeD = Math.max(euclid, 0.001);
-                    dirX = -ddx / safeD;   // 指向中心
-                    dirY = -ddy / safeD;
-                    f = t * f;
-                } else if (displaceMode === 'expand') {
-                    // 放大：中心内容向外铺开，方向指向外
-                    const safeD = Math.max(euclid, 0.001);
-                    dirX = ddx / safeD;    // 指向外
-                    dirY = ddy / safeD;
-                    f = t * f;
+                if (t >= 1) continue; // 超出影响范围，跳过（像素保持零位移 128,128,128,255）
+                const lutIdx = (t * _LUT_SIZE) | 0; // Math.floor 等价
+                f = _lut ? _lut[Math.min(lutIdx, _LUT_SIZE - 1)] : 0;
+                if (_dirFunc) {
+                    const d = _dirFunc(ddx, ddy, euclid);
+                    dirX = d.dirX;
+                    dirY = d.dirY;
                 }
+                if (_multT) f *= t;
             } else {
                 f = Math.exp(-(dist * dist) / (2 * sigma * sigma));
             }
-            const off = scale * f * 40;
-            const rx = -dirX * off;
-            const ry = -dirY * off;
-            const idx = (y * size + x) * 4;
-            data[idx]     = 128 + rx;
-            data[idx + 1] = 128 + ry;
+
+            const off = scale40 * f;
+            const idx = rowIdx + x * 4;
+            data[idx]     = 128 - dirX * off;
+            data[idx + 1] = 128 - dirY * off;
             data[idx + 2] = 128;
             data[idx + 3] = 255;
         }
     }
+
+    // ── 将未触及的像素（bounding box 外）设为零位移 ──
+    // 如果 bounding box 未覆盖全图，快速填充其余部分
+    if (hasRadius && (yStart > 0 || yEnd < size || xStart > 0 || xEnd < size)) {
+        // 上下两侧整行填充
+        const zeroRow = new Uint8ClampedArray(size * 4);
+        for (let i = 0; i < size * 4; i += 4) { zeroRow[i] = 128; zeroRow[i+1] = 128; zeroRow[i+2] = 128; zeroRow[i+3] = 255; }
+        for (let y = 0; y < yStart; y++) data.set(zeroRow, y * size * 4);
+        for (let y = yEnd; y < size; y++) data.set(zeroRow, y * size * 4);
+        // 左右两侧（中间行未被覆盖的列）
+        if (xStart > 0 || xEnd < size) {
+            const zeroPx = new Uint8ClampedArray(4);
+            zeroPx[0] = 128; zeroPx[1] = 128; zeroPx[2] = 128; zeroPx[3] = 255;
+            for (let y = yStart; y < yEnd; y++) {
+                const base = y * size * 4;
+                for (let x = 0; x < xStart; x++) data.set(zeroPx, base + x * 4);
+                for (let x = xEnd; x < size; x++) data.set(zeroPx, base + x * 4);
+            }
+        }
+    }
+
     _mapCtx.putImageData(_mapImageData, 0, 0);
     return _mapCanvas.toDataURL();
 }
