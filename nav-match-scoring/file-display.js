@@ -222,6 +222,7 @@ export function bindFileDisplayEvents() {
     $(document).off('click', '#mc-ms-batch-edit').on('click', '#mc-ms-batch-edit', async function () {
         const ids = [...msSelectedIds];
         if (ids.length === 0) { toastr.error('请先勾选文件'); return; }
+        let enableChoice = ''; // 在弹窗关闭前捕获下拉值
         const html = `<div style="padding:8px;">
             <div style="font-size:1.1em;font-weight:bold;margin-bottom:12px;">批量修改（${ids.length} 个文件）</div>
             <div style="margin-bottom:12px;">
@@ -236,6 +237,7 @@ export function bindFileDisplayEvents() {
                 <button id="mc-batch-del" class="menu_button" style="color:var(--dangerColor);white-space:nowrap;">删除选中的 ${ids.length} 个文件</button>
             </div>
         </div>`;
+        // 删除按钮：独立确认，执行后关闭父弹窗
         $(document).off('click', '#mc-batch-del').on('click', '#mc-batch-del', async function () {
             const ok = await callGenericPopup(`<p>确定删除 ${ids.length} 个文件？</p>`, POPUP_TYPE.CONFIRM, '', { okButton: '删除', cancelButton: '取消' });
             if (ok) {
@@ -249,17 +251,19 @@ export function bindFileDisplayEvents() {
                 $(this).closest('.popup').find('.popup-button-close').click();
             }
         });
-        await callGenericPopup(html, POPUP_TYPE.DISPLAY, '', { okButton: '关闭' });
-        const enableVal = $('#mc-batch-enable').val();
-        if (enableVal !== '') {
+        // 在弹窗关闭前捕获下拉选择（弹窗关闭后 DOM 被移除，无法读取）
+        $(document).on('change', '#mc-batch-enable', function () { enableChoice = $(this).val(); });
+        const result = await callGenericPopup(html, POPUP_TYPE.TEXT, '', { okButton: '确认修改', cancelButton: '取消' });
+        $(document).off('change', '#mc-batch-enable');
+        $(document).off('click', '#mc-batch-del');
+        if (result && enableChoice !== '') {
             const data = getMatchScoringData();
             for (const id of ids) {
                 const f = data.files.find(f => f.id === id);
-                if (f) f.enabled = enableVal === 'true';
+                if (f) f.enabled = enableChoice === 'true';
             }
             saveSettings(); renderFileDisplay(); bindFileDisplayEvents();
         }
-        $(document).off('click', '#mc-batch-del');
     });
 
     // 标签筛选

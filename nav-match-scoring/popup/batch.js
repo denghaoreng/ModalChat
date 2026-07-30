@@ -72,6 +72,12 @@ export async function showBatchAddPopup() {
         renderBatchThumbs();
     });
 
+    // 在弹窗关闭前捕获表单值（弹窗关闭后 DOM 被移除）
+    let formName = '', formTags = '', formContent = '';
+    $(document).on('input', '#mc-batch-display-name', function () { formName = $(this).val()?.trim() || ''; });
+    $(document).on('input', '#mc-batch-tags', function () { formTags = $(this).val()?.trim() || ''; });
+    $(document).on('input', '#mc-batch-content', function () { formContent = $(this).val()?.trim() || ''; });
+
     function renderBatchThumbs() {
         const container = $('#mc-batch-thumb-list');
         $('#mc-batch-count').text(selectedEntries.length);
@@ -103,6 +109,10 @@ export async function showBatchAddPopup() {
 
     const result = await popup;
 
+    $(document).off('input', '#mc-batch-display-name');
+    $(document).off('input', '#mc-batch-tags');
+    $(document).off('input', '#mc-batch-content');
+
     if (!result) return;
 
     if (selectedEntries.length === 0) {
@@ -110,12 +120,12 @@ export async function showBatchAddPopup() {
         return;
     }
 
-    const displayName = $('#mc-batch-display-name').val()?.trim() || '';
-    const tags = $('#mc-batch-tags').val()?.trim() || '';
-    const content = $('#mc-batch-content').val()?.trim() || '';
+    const displayName = formName;
+    const tags = formTags;
+    const content = formContent;
     const tagList = tags ? tags.split(/[,，、\s]+/).map(t => t.trim()).filter(Boolean) : [];
 
-const data = getMatchScoringData();
+    const data = getMatchScoringData();
 
     for (const item of selectedEntries) {
         const entry = item.entry;
