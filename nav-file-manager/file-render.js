@@ -1,7 +1,7 @@
 // nav-file-manager/file-render.js — 文件管理器渲染
 
 import { currentSettings, getGeneralSettings } from '../core/data.js';
-import { escapeHtml, formatFileSize, formatDate } from '../shared/utils.js';
+import { escapeHtml, formatFileSize, formatDate, naturalCompare } from '../shared/utils.js';
 import { getTypeLabel, getFileIcon } from '../shared/file-icons.js';
 import {
     currentDir, selectedFiles,
@@ -89,7 +89,7 @@ export async function renderFileManager(target) {
     allEntries.sort(function (a, b) {
         const va = _sortBy === '_sortType' ? getTypeLabel(a) : a[_sortBy] || '';
         const vb = _sortBy === '_sortType' ? getTypeLabel(b) : b[_sortBy] || '';
-        if (typeof va === 'string') { const c = va.localeCompare(vb); return fmSortDesc ? -c : c; }
+        if (typeof va === 'string') { const c = naturalCompare(va, vb); return fmSortDesc ? -c : c; }
         return fmSortDesc ? vb - va : va - vb;
     });
     const totalPages = Math.max(1, Math.ceil(allEntries.length / FM_PAGE_SIZE));

@@ -26,6 +26,16 @@ export function escapeHtml(str) {
 }
 
 /**
+ * 自然排序比较（数字感知：可爱8 < 可爱11 < 可爱12）
+ * @param {string} a
+ * @param {string} b
+ * @returns {number}
+ */
+export function naturalCompare(a, b) {
+    return String(a ?? '').localeCompare(String(b ?? ''), undefined, { numeric: true, sensitivity: 'base' });
+}
+
+/**
  * 文件扩展名常量
  */
 export const AUDIO_EXTS = ['mp3','wav','ogg','flac','aac','m4a','wma'];

@@ -3,7 +3,7 @@
 import { getChatImagesData } from '../../core/data.js';
 import { getRuleSets } from '../domain/rule-sets.js';
 import { getImageUrlByRegistry } from '../domain/helpers.js';
-import { escapeHtml } from '../../shared/utils.js';
+import { escapeHtml, naturalCompare } from '../../shared/utils.js';
 
 /** 保存上次的规则集筛选值，在导航切换时保持不重置 */
 let _lastRulesetFilter = '';
@@ -52,8 +52,8 @@ export async function renderRules() {
     if (searchTerm) {
         rules = rules.filter(r => r.name.toLowerCase().includes(searchTerm) || (r.regex || '').toLowerCase().includes(searchTerm));
     }
-    if (sortBy === 'name') rules.sort((a, b) => a.name.localeCompare(b.name));
-    else if (sortBy === 'name_desc') rules.sort((a, b) => b.name.localeCompare(a.name));
+    if (sortBy === 'name') rules.sort((a, b) => naturalCompare(a.name, b.name));
+    else if (sortBy === 'name_desc') rules.sort((a, b) => naturalCompare(b.name, a.name));
     else if (sortBy === 'order_desc') rules.sort((a, b) => (b.order || 0) - (a.order || 0));
     else rules.sort((a, b) => (a.order || 0) - (b.order || 0));
 

@@ -2,7 +2,7 @@
 
 import { getMatchScoringData, saveSettings } from '../core/data.js';
 import { currentSettings } from '../core/data.js';
-import { escapeHtml, formatFileSize, debounce, generateId, AUDIO_EXTS, VIDEO_EXTS, detectFileType } from '../shared/utils.js';
+import { escapeHtml, formatFileSize, debounce, generateId, naturalCompare, AUDIO_EXTS, VIDEO_EXTS, detectFileType } from '../shared/utils.js';
 import { cleanupStaleExtraRefs } from './match-chat-results.js';
 import { showTagFilterPopup, showBatchAddPopup } from './popup-config.js';
 import { callGenericPopup } from '../../../../popup.js';
@@ -52,8 +52,8 @@ export async function renderFileDisplay() {
 
     if (sortBy === 'newest') files.sort((a, b) => (b.uploadDate || 0) - (a.uploadDate || 0));
     else if (sortBy === 'oldest') files.sort((a, b) => (a.uploadDate || 0) - (b.uploadDate || 0));
-    else if (sortBy === 'name_asc') files.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
-    else if (sortBy === 'name_desc') files.sort((a, b) => (b.displayName || '').localeCompare(a.displayName || ''));
+    else if (sortBy === 'name_asc') files.sort((a, b) => naturalCompare(a.displayName, b.displayName));
+    else if (sortBy === 'name_desc') files.sort((a, b) => naturalCompare(b.displayName, a.displayName));
     else if (sortBy === 'score_desc') files.sort((a, b) => (b._score || 0) - (a._score || 0));
     else if (sortBy === 'score_asc') files.sort((a, b) => (a._score || 0) - (b._score || 0));
 
@@ -321,6 +321,7 @@ export function bindFileDisplayEvents() {
     $(document).off('input', '#mc-ms-page-size').on('input', '#mc-ms-page-size', function () {
         const val = parseInt($(this).val());
         if (!isNaN(val) && val >= 0 && val <= 1000) {
+            const data = getMatchScoringData();
             data.filePageSize = val || 10;
             msCurrentPage = 1;
             renderFileDisplay(); bindFileDisplayEvents();

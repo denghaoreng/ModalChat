@@ -2,7 +2,7 @@
 
 import { getChatImagesData } from '../../core/data.js';
 import { getCharSets } from '../domain/char-sets.js';
-import { escapeHtml } from '../../shared/utils.js';
+import { escapeHtml, naturalCompare } from '../../shared/utils.js';
 
 let _lastRsCharSelect = '';
 let _lastRsSearchTerm = '';
@@ -49,7 +49,7 @@ export function renderRuleSets() {
     if (searchTerm) {
         ruleSets = ruleSets.filter(rs => rs.name.toLowerCase().includes(searchTerm));
     }
-    if (sortBy === 'name') ruleSets.sort((a, b) => a.name.localeCompare(b.name));
+    if (sortBy === 'name') ruleSets.sort((a, b) => naturalCompare(a.name, b.name));
     else ruleSets.sort((a, b) => (a.order || 0) - (b.order || 0));
 
     // 分页
